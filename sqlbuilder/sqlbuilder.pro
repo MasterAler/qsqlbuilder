@@ -10,12 +10,14 @@ SOURCES += \
     Config.cpp \
     Query.cpp \
     Selector.cpp \
-    Where.cpp
+    Where.cpp \
+    Inserter.cpp
 
 HEADERS += \
     Config.h \
     Query.h \
     Selector.h \
-    Where.h
+    Where.h \
+    Inserter.h
 
 DEFINES *= QT_USE_QSTRINGBUILDER

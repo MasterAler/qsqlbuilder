@@ -8,6 +8,7 @@
 
 QT_FORWARD_DECLARE_CLASS(QueryPrivate)
 QT_FORWARD_DECLARE_CLASS(Selector)
+QT_FORWARD_DECLARE_CLASS(Inserter)
 
 class Query
 {
@@ -19,6 +20,8 @@ public:
     ~Query();
 
     Selector select(const QStringList& fields = QStringList()) const;
+
+    Inserter insert(const QStringList& fields, const QVariantList& data) const;
 
 public:
     QSqlQuery performSQL(const QString& sql) const;
