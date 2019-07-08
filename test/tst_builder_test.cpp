@@ -15,6 +15,7 @@ class builder_test : public QObject
 
 public:
     builder_test()
+        : m_showDebug(false)
     {}
 
     ~builder_test()
@@ -27,6 +28,12 @@ private slots:
     void test_raw_sql();
     void test_select_basic();
     void test_star_selection();
+
+    void test_simple_where();
+    void test_comlex_where();
+
+private:
+    bool m_showDebug;
 };
 
 void builder_test::initTestCase()
@@ -42,10 +49,11 @@ void builder_test::test_raw_sql()
     Query query;
     QSqlQuery q = query.performSQL("SELECT _id, name FROM object LIMIT 3;");
 
-//    while(q.next())
-//    {
-//        qDebug() << q.value("_id") << "\t" << q.value("name");
-//    }
+    if (m_showDebug)
+    {
+        while(q.next())
+            qInfo() << q.value("_id") << "\t" << q.value("name");
+    }
 
     Q_ASSERT(q.numRowsAffected() > 0);
 }
@@ -53,21 +61,49 @@ void builder_test::test_raw_sql()
 void builder_test::test_select_basic()
 {
     auto res = Query("object").select(QStringList() << "_id" << "name")
-                                ->orderBy("_id", Selector::DESC)
+                                ->orderBy("_id", Order::DESC)
                                 ->limit(3)
                                 ->offset(20)
                                 ->perform();
     Q_ASSERT(res.toList().count() == 3);
-//    qInfo() << QJsonDocument::fromVariant(res);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
 }
 
 void builder_test::test_star_selection()
 {
     auto res = Query("object").select()
-                                ->orderBy("_id", Selector::ASC)
+                                ->orderBy("_id", Order::ASC)
                                 ->limit(5)
                                 ->perform();
     Q_ASSERT(res.toList().count() == 5);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+}
+
+void builder_test::test_simple_where()
+{
+    auto res = Query("object").select(QStringList() << "_id" << "name")
+                                ->where(OP::EQ("_otype", 2) && (OP::LT("_id", 100) || OP::EQ("guid", "rte")))
+                                ->perform();
+    qInfo() << QJsonDocument::fromVariant(res);
+}
+
+void builder_test::test_comlex_where()
+{
+//    auto res = Query("object").select(QStringList() << "_id" << "name")
+//                                ->where(WhereConcat::AND, {
+//                                            {"_otype", OP::EQ, 1}
+//                                        })
+//                                ->where(WhereConcat::OR, {
+//                                            {"_otype", OP::EQ, 3}
+//                                        })
+//                                ->where(WhereConcat::AND, {
+//                                            {"_id", OP::LT, 6}
+//                                        })
+//                                ->perform();
 //    qInfo() << QJsonDocument::fromVariant(res);
 }
 
