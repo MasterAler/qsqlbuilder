@@ -133,4 +133,9 @@ Clause IN(const QString& fieldName, const QVariantList& values)
     return Clause{fieldName, "IN", QString("(%1)").arg(stringValues.join(','))};
 }
 
+Clause IS_NULL(const QString& fieldName)
+{
+    return Clause{fieldName, "IS", Clause::escapeValue(QVariant())};
+}
+
 }

@@ -43,6 +43,8 @@ public:
     QStringList             m_columnNames;
 };
 
+bool Query::LOG_QUERIES { false };
+
 /**********************************************************************************/
 
 Query::Query(const QString& tableName, const QString& pkey)
@@ -56,6 +58,11 @@ Query::~Query()
 
 }
 
+void Query::setQueryLoggingEnabled(bool enabled)
+{
+    Query::LOG_QUERIES = enabled;
+}
+
 QSqlQuery Query::performSQL(const QString& sql) const
 {
     Q_D(const Query);
@@ -63,7 +70,8 @@ QSqlQuery Query::performSQL(const QString& sql) const
     QSqlQuery sqlQuery(d->m_DB);
     sqlQuery.exec(sql);
 
-    qDebug() << sqlQuery.lastQuery();
+    if (Query::LOG_QUERIES)
+        qDebug() << sqlQuery.lastQuery();
 
     return sqlQuery;
 }
