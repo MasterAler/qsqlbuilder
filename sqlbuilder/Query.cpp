@@ -6,6 +6,7 @@
 #include <QSqlDatabase>
 #include <QSqlRecord>
 #include <QSqlError>
+#include <QSqlIndex>
 #include <QUuid>
 
 #include <QDebug>
@@ -13,7 +14,7 @@
 class QueryPrivate
 {
 public:
-    QueryPrivate(const QString& tableName)
+    QueryPrivate(const QString& tableName, const QString& pkey)
         : m_DB(Query::defaultConnection())
         , m_tableName(tableName)
     {
@@ -24,9 +25,11 @@ public:
 
         if (!m_DB.isOpen())
         {
-            if (!m_DB.open())
+            if (!m_DB.open()) // TODO: error handling on failed connection
                 qCritical() << m_DB.lastError();
         }
+
+        m_pkey = pkey.isEmpty() ? m_DB.primaryIndex(m_tableName).fieldName(0) : pkey;
 
         QSqlRecord columns = m_DB.record(m_tableName);
         for(int i=0; i < columns.count(); ++i)
@@ -35,13 +38,15 @@ public:
 
     mutable QSqlDatabase    m_DB;
     QString                 m_tableName;
+
+    QString                 m_pkey;
     QStringList             m_columnNames;
 };
 
 /**********************************************************************************/
 
-Query::Query(const QString& tableName)
-    : d_ptr(new QueryPrivate(tableName))
+Query::Query(const QString& tableName, const QString& pkey)
+    : d_ptr(new QueryPrivate(tableName, pkey))
 { }
 
 Query::~Query()
@@ -69,6 +74,12 @@ QString Query::tableName() const
     return d->m_tableName;
 }
 
+QString Query::primaryKeyName() const
+{
+    Q_D(const Query);
+    return d->m_pkey;
+}
+
 QStringList Query::columnNames() const
 {
     Q_D(const Query);
@@ -80,9 +91,9 @@ Selector Query::select(const QStringList& fields) const
     return Selector(this, fields);
 }
 
-Inserter Query::insert(const QStringList& fields, const QVariantList& data) const
+Inserter Query::insert(const QStringList& fields) const
 {
-    return Inserter(this, fields, data);
+    return Inserter(this, fields);
 }
 
 QSqlDatabase& Query::defaultConnection()

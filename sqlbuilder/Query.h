@@ -16,17 +16,19 @@ class Query
     Q_DECLARE_PRIVATE(Query)
     Q_DISABLE_COPY(Query)
 public:
-    explicit Query(const QString& tableName = QString());
+    explicit Query(const QString& tableName = QString(), const QString& pkey = QString());
     ~Query();
 
     Selector select(const QStringList& fields = QStringList()) const;
 
-    Inserter insert(const QStringList& fields, const QVariantList& data) const;
+    Inserter insert(const QStringList& fields) const;
 
 public:
     QSqlQuery performSQL(const QString& sql) const;
 
     QString tableName() const;
+
+    QString primaryKeyName() const;
 
     QStringList columnNames() const;
 
