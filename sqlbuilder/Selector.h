@@ -24,7 +24,6 @@ public:
 
 class Selector
 {
-    Q_GADGET
     Q_DISABLE_COPY(Selector)
 public:
     explicit Selector(const Query* q, const QStringList& fields);
@@ -45,7 +44,7 @@ public:
 
     Selector offset(int offset) &&;
 
-    QVariant perform() &&;
+    QVariantList perform() &&;
 
 private:
     static const QString SELECT_SQL;

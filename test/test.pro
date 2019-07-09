@@ -7,6 +7,7 @@ CONFIG -= app_bundle
 
 SOURCES += \
     tst_builder_test.cpp
-#        main.cpp \
 
 include($$PWD/../sqlbuilder_include.pri)
+
+DEFINES *= QT_FORCE_ASSERTS

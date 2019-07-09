@@ -1,7 +1,7 @@
 #include "Selector.h"
-
 #include "Query.h"
-#include <QDebug>
+
+#include <QSqlQuery>
 
 class SelectorPrivate
 {
@@ -9,12 +9,12 @@ public:
     SelectorPrivate(const Query* q, const QStringList& fields)
         : m_query(q)
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())
-        , m_where("")
-        , m_limit("")
-        , m_order("")
-        , m_having("")
-        , m_groupBy("")
-        , m_offset("")
+        , m_where{""}
+        , m_limit{""}
+        , m_order{""}
+        , m_having{""}
+        , m_groupBy{""}
+        , m_offset{""}
     { }
 
     const Query*        m_query;
@@ -78,7 +78,7 @@ Selector Selector::offset(int offset) &&
     return std::move(*this);
 }
 
-QVariant Selector::perform() &&
+QVariantList Selector::perform() &&
 {
     QVariantList result;
 
@@ -100,7 +100,7 @@ QVariant Selector::perform() &&
     while(q.next())
     {
         QVariantMap resultRow;
-        for(const QString& field:  impl->m_fields)
+        for(const QString& field : impl->m_fields)
             resultRow[field] = q.value(field);
 
         result.append(resultRow);

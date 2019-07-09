@@ -3,7 +3,7 @@
 #include "Where.h"
 
 #include <QSqlQuery>
-#include <QDebug>
+#include <QSqlError>
 
 class InserterPrivate
 {
@@ -64,7 +64,7 @@ QList<int> InserterPerformer::perform() &&
         valueTail << QString("(%1)").arg(vBlock.join(','));
     }
 
-    QString sql = Inserter::INSERT_SQL
+    const QString sql = Inserter::INSERT_SQL
                     .arg(impl->m_query->tableName())
                     .arg(QString("(%1)").arg(impl->m_fields.join(',')))
                     .arg(valueTail.join(','))
