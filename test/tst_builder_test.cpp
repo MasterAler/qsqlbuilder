@@ -13,6 +13,7 @@
 #include "Selector.h"
 #include "Inserter.h"
 #include "Deleter.h"
+#include "Updater.h"
 
 class builder_test : public QObject
 {
@@ -47,6 +48,9 @@ private slots:
 
     void test_error_reporting();
     void test_insert_wrong_usage();
+
+    void test_update_simple();
+    void test_full_cycle();
 
 private:
     bool            m_showDebug;
@@ -262,7 +266,10 @@ void builder_test::test_error_reporting()
     no_query.insert({"lol"}).values({112, 3333}).perform();
     Q_ASSERT(no_query.lastError().isValid());
 
-    no_query.delete_(OP::GE("dfdf", 33333));
+    no_query.delete_(OP::GE("dfdf", 33333)).perform();
+    Q_ASSERT(no_query.lastError().isValid());
+
+    no_query.update({{"asdf", "asfasf"}}).perform();
     Q_ASSERT(no_query.lastError().isValid());
 
     // -----------------------------------------------------
@@ -284,6 +291,12 @@ void builder_test::test_error_reporting()
 
     query.insert({"olol"}).values({"FUUUU"}).perform();
     Q_ASSERT(query.lastError().isValid());
+
+    query.update({{"sdsdg", 33} , {"hdfdfh", "asfasf"}}).perform();
+    Q_ASSERT(query.lastError().isValid());
+
+    query.update({{"sdsdg", 33} , {"hdfdfh", "asfasf"}}).where(OP::GT("_id", 100)).perform();
+    Q_ASSERT(query.lastError().isValid());
 }
 
 void builder_test::test_insert_wrong_usage()
@@ -300,6 +313,59 @@ void builder_test::test_insert_wrong_usage()
         .values({ 42, "OH_I_FORGOT_TO_ADD_MORE_DATA"})
         .perform();
     Q_ASSERT(query.lastError().isValid());
+}
+
+void builder_test::test_update_simple()
+{
+    const auto query = Query(TARGET_TABLE);
+
+    auto res = query.select({"_id"}).orderBy("_id", Order::ASC).offset(5).perform();
+    int id5 = res[5].toMap()["_id"].toInt();
+
+    bool ok = query
+                .update({{"descr", "OLOLOLO"}})
+                .where(OP::LE("_id", id5))
+                .perform();
+    Q_ASSERT(ok);
+    Q_ASSERT(!query.lastError().isValid());
+}
+
+void builder_test::test_full_cycle()
+{
+    const auto query = Query("some_object");
+
+    auto ids = query
+            .insert({"_otype", "guid", "name"})
+            .values({42, QUuid::createUuid().toString(), "CYCLE_TEST1"})
+            .values({42, QUuid::createUuid().toString(), "CYCLE_TEST2"})
+            .values({42, QUuid::createUuid().toString(), "CYCLE_TEST3"})
+            .perform();
+    Q_ASSERT(ids.count() == 3);
+    Q_ASSERT(!query.hasError());
+
+    QVariantList idData;
+    for(const int& id: ids)
+        idData << id;
+
+    const QString descr = "THIS_IS_A_DESCRIPTION";
+    bool ok = query.update({{"descr", descr}}).where(OP::IN("_id", idData)).perform();
+    Q_ASSERT(ok);
+    Q_ASSERT(!query.hasError());
+
+    auto data = query.select({"descr"}).where(OP::IN("_id", idData)).perform();
+    Q_ASSERT(data.count() == 3);
+    Q_ASSERT(!query.hasError());
+
+    for(const auto& val: data)
+        Q_ASSERT(val.toMap()["descr"].toString() == descr);
+
+    ok = query.delete_(OP::IN("_id", idData)).perform();
+    Q_ASSERT(ok);
+    Q_ASSERT(!query.hasError());
+
+    data = query.select({"descr"}).where(OP::IN("_id", idData)).perform();
+    Q_ASSERT(data.isEmpty());
+    Q_ASSERT(!query.hasError());
 }
 
 QTEST_MAIN(builder_test)

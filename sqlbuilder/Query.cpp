@@ -1,8 +1,10 @@
 #include "Query.h"
+
 #include "Config.h"
 #include "Selector.h"
 #include "Inserter.h"
 #include "Deleter.h"
+#include "Updater.h"
 
 #include <QSqlDatabase>
 #include <QSqlRecord>
@@ -81,6 +83,11 @@ QSqlError Query::lastError() const
     return impl->m_lastError;
 }
 
+bool Query::hasError() const
+{
+    return impl->m_lastError.isValid();
+}
+
 QString Query::tableName() const
 {
     return impl->m_tableName;
@@ -106,9 +113,14 @@ Inserter Query::insert(const QStringList& fields) const
     return Inserter(this, fields);
 }
 
-Deleter Query::delete_(OP::Clause&& whereClause)
+Deleter Query::delete_(OP::Clause&& whereClause) const
 {
     return Deleter(this, std::forward<OP::Clause>(whereClause));
+}
+
+Updater Query::update(const QVariantMap& updateValues) const
+{
+    return Updater(this, updateValues);
 }
 
 QSqlDatabase& Query::defaultConnection()

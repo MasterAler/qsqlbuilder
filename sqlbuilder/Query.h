@@ -12,6 +12,7 @@ QT_FORWARD_DECLARE_CLASS(QSqlError)
 QT_FORWARD_DECLARE_CLASS(Selector)
 QT_FORWARD_DECLARE_CLASS(Inserter)
 QT_FORWARD_DECLARE_CLASS(Deleter)
+QT_FORWARD_DECLARE_CLASS(Updater)
 
 class Query
 {
@@ -29,12 +30,16 @@ public:
 
     Inserter insert(const QStringList& fields) const;
 
-    Deleter  delete_(OP::Clause&& whereClause);
+    Deleter  delete_(OP::Clause&& whereClause) const;
+
+    Updater  update(const QVariantMap& updateValues) const;
 
 public:
     QSqlQuery performSQL(const QString& sql) const;
 
     QSqlError lastError() const;
+
+    bool hasError() const;
 
     QString tableName() const;
 
