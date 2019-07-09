@@ -9,7 +9,6 @@ QT_FORWARD_DECLARE_CLASS(QSqlDatabase)
 QT_FORWARD_DECLARE_CLASS(QSqlQuery)
 QT_FORWARD_DECLARE_CLASS(QSqlError)
 
-QT_FORWARD_DECLARE_CLASS(QueryPrivate)
 QT_FORWARD_DECLARE_CLASS(Selector)
 QT_FORWARD_DECLARE_CLASS(Inserter)
 QT_FORWARD_DECLARE_CLASS(Deleter)
@@ -48,6 +47,6 @@ private:
     static bool LOG_QUERIES;
 
 private:
-    friend class QueryPrivate;
+    struct QueryPrivate;
     std::unique_ptr<QueryPrivate> impl;
 };

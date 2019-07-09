@@ -12,7 +12,8 @@ SOURCES += \
     Selector.cpp \
     Where.cpp \
     Inserter.cpp \
-    Deleter.cpp
+    Deleter.cpp \
+    Updater.cpp
 
 HEADERS += \
     Config.h \
@@ -20,6 +21,7 @@ HEADERS += \
     Selector.h \
     Where.h \
     Inserter.h \
-    Deleter.h
+    Deleter.h \
+    Updater.h
 
 DEFINES *= QT_USE_QSTRINGBUILDER

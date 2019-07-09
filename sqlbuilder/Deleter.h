@@ -4,9 +4,7 @@
 #include <QString>
 
 #include "Where.h"
-
 QT_FORWARD_DECLARE_CLASS(Query)
-QT_FORWARD_DECLARE_CLASS(DeleterPrivate)
 
 class Deleter
 {
@@ -21,6 +19,8 @@ public:
     bool perform() &&;
 
 private:
-    static const QString DELETE_SQL;
+    struct DeleterPrivate;
     std::unique_ptr<DeleterPrivate> impl;
+
+    static const QString DELETE_SQL;
 };

@@ -4,7 +4,6 @@
 #include <QVariant>
 
 QT_FORWARD_DECLARE_CLASS(Query)
-QT_FORWARD_DECLARE_CLASS(InserterPrivate)
 QT_FORWARD_DECLARE_CLASS(InserterPerformer)
 
 class Inserter
@@ -20,8 +19,10 @@ public:
     InserterPerformer values(const QVariantList& data) &&;
 
 protected:
-    static const QString INSERT_SQL;
+    struct InserterPrivate;
     std::unique_ptr<InserterPrivate> impl;
+
+    static const QString INSERT_SQL;
 };
 
 /*******************************************************************************************/

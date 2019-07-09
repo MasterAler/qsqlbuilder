@@ -5,9 +5,8 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-class InserterPrivate
+struct Inserter::InserterPrivate
 {
-public:
     InserterPrivate(const Query* q, const QStringList& fields)
         : m_query(q)
         , m_fields(fields)

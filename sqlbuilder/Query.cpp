@@ -13,9 +13,8 @@
 
 #include <QDebug>
 
-class QueryPrivate
+struct Query::QueryPrivate
 {
-public:
     QueryPrivate(const QString& tableName, const QString& pkey)
         : m_DB(Query::defaultConnection())
         , m_tableName(tableName)
