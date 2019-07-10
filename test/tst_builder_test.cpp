@@ -54,6 +54,7 @@ private slots:
     void test_full_cycle();
 
     void test_transcations();
+    void test_nested_transactions();
 
     void test_join();
 
@@ -169,11 +170,8 @@ void builder_test::test_insert_sql()
         qInfo() << "Multi insert: " << resMulti;
     }
 
-    const auto query = Query(TARGET_TABLE);
-    try
-    {
-        const auto q_locker = query.createTransactionLock();
-
+    auto query = Query(TARGET_TABLE);
+    query.transact([&]{
         for(int i=0; i < 30; ++i)
         {
             query
@@ -181,12 +179,7 @@ void builder_test::test_insert_sql()
                 .values({ 20 * rand() / RAND_MAX, QUuid::createUuid().toString(), QString("RND %1").arg(i + 1)})
                 .perform();
         }
-    }
-    catch (const std::runtime_error& error)
-    {
-        qCritical() << "Check inserts and/or transactions";
-        qFatal(error.what());
-    }
+    });
 }
 
 void builder_test::test_raw_sql()
@@ -407,49 +400,33 @@ void builder_test::test_full_cycle()
 
 void builder_test::test_transcations()
 {
-    const auto query = Query(TARGET_TABLE);
-
-//    const auto errorCode = query.do([]{
-//        auto ids = query
-//                .insert({"_otype", "guid", "name"})
-//                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
-//                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
-//                .perform();
-
-//        Q_ASSERT(ids.count() == 2);
-//        Q_ASSERT(!query.hasError());
-
-//        bool d_ok = query.delete_(OP::EQ("_id", ids.first())).perform();
-//        Q_ASSERT(d_ok);
-//        Q_ASSERT(!query.hasError());
-//    });
+    auto query = Query(TARGET_TABLE);
 
     const QString GOOD_NAME {"GOOD_TRANSACTION"};
-    {
-        auto q_locker = query.createTransactionLock();
 
+    bool errorCode = query.transact([&]{
         auto ids = query
                 .insert({"_otype", "guid", "name"})
                 .values({33, QUuid::createUuid().toString(), GOOD_NAME})
                 .values({33, QUuid::createUuid().toString(), GOOD_NAME})
                 .perform();
+
         Q_ASSERT(ids.count() == 2);
         Q_ASSERT(!query.hasError());
 
         bool d_ok = query.delete_(OP::EQ("_id", ids.first())).perform();
         Q_ASSERT(d_ok);
         Q_ASSERT(!query.hasError());
-    }
-     Q_ASSERT(!query.hasError());
+    });
+    Q_ASSERT(errorCode);
 
     auto check1 = query.select().where(OP::EQ("name", GOOD_NAME)).perform();
     Q_ASSERT(!query.hasError());
     Q_ASSERT(check1.count() == 1);
 
     const QString BAD_NAME {"BAD_TRANSACTION"};
-    {
-        auto q_locker = query.createTransactionLock();
 
+    errorCode = query.transact([&]{
         auto ids = query
                 .insert({"_otype", "guid", "name"})
                 .values({33, QUuid::createUuid().toString(), BAD_NAME})
@@ -461,12 +438,65 @@ void builder_test::test_transcations()
         bool d_ok = query.delete_(OP::EQ("_id_OOPS", ids.first())).perform();
         Q_ASSERT(!d_ok);
         Q_ASSERT(query.hasError());
-    }
-     Q_ASSERT(query.hasError());
+    });
+    Q_ASSERT(!errorCode);
 
     auto check2 = query.select().where(OP::EQ("name", BAD_NAME)).perform();
     Q_ASSERT(!query.hasError());
     Q_ASSERT(check2.isEmpty());
+}
+
+void builder_test::test_nested_transactions()
+{
+    auto query = Query(TARGET_TABLE);
+
+    const QString GOOD_NAME {"GOOD_TRANSACTION"};
+    const QString BAD_NAME {"BAD_TRANSACTION"};
+
+    query.delete_(OP::EQ("name", GOOD_NAME)).perform();
+
+    bool errorCode = query.transact([&]{
+        auto ids = query
+                .insert({"_otype", "guid", "name"})
+                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+                .perform();
+
+        Q_ASSERT(ids.count() == 2);
+        Q_ASSERT(!query.hasError());
+
+        bool d_ok = query.delete_(OP::EQ("_id", ids.first())).perform();
+        Q_ASSERT(d_ok);
+        Q_ASSERT(!query.hasError());
+
+        auto check1 = query.select().where(OP::EQ("name", GOOD_NAME)).perform();
+        Q_ASSERT(!query.hasError());
+        Q_ASSERT(check1.count() == 1);
+
+        bool nestedErrorCode = query.transact([&]{
+            auto ids = query
+                    .insert({"_otype", "guid", "name"})
+                    .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+                    .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+                    .perform();
+            Q_ASSERT(ids.count() == 2);
+            Q_ASSERT(!query.hasError());
+
+            bool d_ok = query.delete_(OP::EQ("_id", ids.first())).perform();
+            Q_ASSERT(d_ok);
+            Q_ASSERT(!query.hasError());
+
+            auto check2 = query.select().where(OP::EQ("name", BAD_NAME)).perform();
+            Q_ASSERT(!query.hasError());
+            Q_ASSERT(check2.isEmpty());
+        });
+        Q_ASSERT(nestedErrorCode);
+    });
+    Q_ASSERT(errorCode);
+
+    auto check1 = query.select().where(OP::EQ("name", GOOD_NAME)).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(check1.count() == 2);
 }
 
 void builder_test::test_join()
