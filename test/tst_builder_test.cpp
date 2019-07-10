@@ -24,6 +24,7 @@ public:
         : m_showDebug(true)
         , TARGET_TABLE("some_object")
         , SECOND_TABLE("other_table")
+        , THIRD_TABLE("third_table")
     {}
 
     ~builder_test()
@@ -61,11 +62,14 @@ private slots:
 
     void test_join_complex();
 
+    void test_select_functions();
+
 private:
     bool            m_showDebug;
 
     const QString   TARGET_TABLE;
     const QString   SECOND_TABLE;
+    const QString   THIRD_TABLE; // used 4 multi-joins
 };
 
 void builder_test::initTestCase()
@@ -666,6 +670,35 @@ void builder_test::test_join_complex()
     auto tst = second_query.select().where(OP::EQ("_id", id2.first())).perform();
     Q_ASSERT(!query.hasError());
     Q_ASSERT(tst.isEmpty());
+}
+
+void builder_test::test_select_functions()
+{
+    const auto query = Query(TARGET_TABLE);
+
+    auto res = query.select({"COUNT(*) as lol"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("lol"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+
+    res = query.select({"SUM(_id) as strange_sum"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("strange_sum"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+
+    res = query.select({"MAX(_id) as max_id"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("max_id"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
 }
 
 QTEST_MAIN(builder_test)
