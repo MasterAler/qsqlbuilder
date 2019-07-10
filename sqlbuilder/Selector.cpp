@@ -12,6 +12,7 @@ struct Selector::SelectorPrivate
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())
         , m_join{""}
         , m_joinTable{""}
+        , m_joinDisambigToOther(false)
         , m_where{""}
         , m_limit{""}
         , m_order{""}
@@ -25,6 +26,7 @@ struct Selector::SelectorPrivate
 
     QString             m_join;
     QString             m_joinTable;
+    bool                m_joinDisambigToOther;
 
     QString             m_where;
     QString             m_limit;
@@ -34,7 +36,7 @@ struct Selector::SelectorPrivate
     QString             m_groupBy;
     QString             m_offset;
 
-    void resolveColumnDisambiguation(bool resolveDisambigToOther)
+    void resolveColumnDisambiguation()
     {
         // This should resolve disambiduation in column names
         QSet<QString> thisColumnSet  = QSet<QString>::fromList(m_query->columnNames());
@@ -47,9 +49,9 @@ struct Selector::SelectorPrivate
             if (thisColumnSet.contains(fieldName))
             {
                 QString resolutionFieldName = QString("%1.%2")
-                                                .arg(!resolveDisambigToOther
-                                                        ? m_query->tableName()
-                                                        : m_joinTable)
+                                                .arg(!m_joinDisambigToOther
+                                                            ? m_query->tableName()
+                                                            : m_joinTable)
                                                 .arg(fieldName);
 
                 m_where.replace(fieldName, resolutionFieldName);
@@ -74,8 +76,7 @@ Selector::~Selector()
 Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType, bool resolveDisambigToOther)
 {
     impl->m_joinTable = otherTable;
-    impl->resolveColumnDisambiguation(resolveDisambigToOther);
-
+    impl->m_joinDisambigToOther = resolveDisambigToOther;
     impl->m_join = QString("%1 JOIN %2 on %3")
                         .arg(QVariant::fromValue(joinType).toString())
                         .arg(otherTable)
@@ -125,6 +126,7 @@ Selector Selector::offset(int offset) &&
 QVariantList Selector::perform() &&
 {
     QVariantList result;
+    impl->resolveColumnDisambiguation();
 
     const QStringList tail = QStringList()
                             << impl->m_groupBy
