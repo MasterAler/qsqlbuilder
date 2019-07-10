@@ -18,21 +18,23 @@ public:
 
     InserterPerformer values(const QVariantList& data) &&;
 
-protected:
+private:
     struct InserterPrivate;
     std::unique_ptr<InserterPrivate> impl;
 
+    friend class InserterPerformer;
     static const QString INSERT_SQL;
 };
 
 /*******************************************************************************************/
 
-class InserterPerformer: public Inserter
+class InserterPerformer
 {
     Q_DISABLE_COPY(InserterPerformer)
 public:
-    InserterPerformer(const Query* q, const QStringList& fields);
     ~InserterPerformer();
+
+    InserterPerformer(Inserter&& inserter);
 
     InserterPerformer(InserterPerformer&&) = default;
     InserterPerformer& operator=(InserterPerformer&&) = default;
@@ -40,4 +42,7 @@ public:
     InserterPerformer values(const QVariantList& data) &&;
 
     QList<int> perform() &&;
+
+private:
+    std::unique_ptr<Inserter::InserterPrivate> impl;
 };

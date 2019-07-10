@@ -23,6 +23,7 @@ public:
     builder_test()
         : m_showDebug(true)
         , TARGET_TABLE("some_object")
+        , SECOND_TABLE("other_table")
     {}
 
     ~builder_test()
@@ -54,9 +55,13 @@ private slots:
 
     void test_transcations();
 
+    void test_join();
+
 private:
     bool            m_showDebug;
+
     const QString   TARGET_TABLE;
+    const QString   SECOND_TABLE;
 };
 
 void builder_test::initTestCase()
@@ -74,26 +79,25 @@ void builder_test::initTestCase()
     else
     {
         const QString dbRole{"su"};
+        QSqlQuery query(conn);
 
         if (!conn.tables().contains(TARGET_TABLE))
         {
-            QSqlQuery query(conn);
-
             const QString createSQL = QString("CREATE TABLE %1 \
-                    ( \
-                        _id serial NOT NULL, \
-                        _otype integer NOT NULL, \
-                        _parent integer, \
-                        guid text NOT NULL, \
-                        name text NOT NULL, \
-                        descr text, \
-                        CONSTRAINT some_object_pkey PRIMARY KEY (_id) \
-                    );").arg(TARGET_TABLE);
+                                              ( \
+                                                  _id serial NOT NULL, \
+                                                  _otype integer NOT NULL, \
+                                                  _parent integer, \
+                                                  guid text NOT NULL, \
+                                                  name text NOT NULL, \
+                                                  descr text, \
+                                                  CONSTRAINT some_object_pkey PRIMARY KEY (_id) \
+                                              );").arg(TARGET_TABLE);
 
             if (!query.exec(createSQL))
             {
-                qCritical() << "table creation failed: " << query.lastError().text();
-                throw std::runtime_error("TEST TABLE CREATION FAILED");
+                qCritical() << "table1 creation failed: " << query.lastError().text();
+                throw std::runtime_error("TEST TABLE1 CREATION FAILED");
             }
 
             const QString ownerSQL = QString("ALTER TABLE %1 OWNER to %2;").arg(TARGET_TABLE, dbRole);
@@ -106,6 +110,26 @@ void builder_test::initTestCase()
             if (!query.exec(grantSQL))
                 qCritical() << "grant role failed";
         }
+
+        if (!conn.tables().contains(SECOND_TABLE))
+        {
+            const QString createSecondSql = QString("CREATE TABLE %1 \
+                                                    ( \
+                                                        _id serial NOT NULL, \
+                                                        some_text text NOT NULL, \
+                                                        some_fkey integer NOT NULL , \
+                                                        CONSTRAINT other_table_pkey PRIMARY KEY (_id), \
+                                                        CONSTRAINT other_table__some_fkey_fkey FOREIGN KEY (some_fkey) \
+                                                        REFERENCES some_object (_id) MATCH SIMPLE \
+                                                        ON UPDATE CASCADE \
+                                                        ON DELETE CASCADE \
+                                                    )").arg(SECOND_TABLE);
+            if (!query.exec(createSecondSql))
+            {
+                qCritical() << "table2 creation failed: " << query.lastError().text();
+                throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+            }
+        }
     }
     qInfo() << "sample table 1 prepared";
 
@@ -113,7 +137,7 @@ void builder_test::initTestCase()
     Config::setConnectionParams("QPSQL", "127.0.0.1", "ksvd4db", "root", "");
     Query::setQueryLoggingEnabled(true);
 
-    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
+    Query().performSQL(QString("TRUNCATE TABLE %1 CASCADE;").arg(TARGET_TABLE));
 }
 
 void builder_test::cleanupTestCase()
@@ -122,6 +146,7 @@ void builder_test::cleanupTestCase()
 
 //    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
 //    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(TARGET_TABLE));
+//    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(SECOND_TABLE));
 }
 
 void builder_test::test_insert_sql()
@@ -344,7 +369,7 @@ void builder_test::test_update_simple()
 
 void builder_test::test_full_cycle()
 {
-    const auto query = Query("some_object");
+    const auto query = Query(TARGET_TABLE);
 
     auto ids = query
             .insert({"_otype", "guid", "name"})
@@ -382,7 +407,22 @@ void builder_test::test_full_cycle()
 
 void builder_test::test_transcations()
 {
-    const auto query = Query("some_object");
+    const auto query = Query(TARGET_TABLE);
+
+//    const auto errorCode = query.do([]{
+//        auto ids = query
+//                .insert({"_otype", "guid", "name"})
+//                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+//                .values({33, QUuid::createUuid().toString(), GOOD_NAME})
+//                .perform();
+
+//        Q_ASSERT(ids.count() == 2);
+//        Q_ASSERT(!query.hasError());
+
+//        bool d_ok = query.delete_(OP::EQ("_id", ids.first())).perform();
+//        Q_ASSERT(d_ok);
+//        Q_ASSERT(!query.hasError());
+//    });
 
     const QString GOOD_NAME {"GOOD_TRANSACTION"};
     {
@@ -400,6 +440,7 @@ void builder_test::test_transcations()
         Q_ASSERT(d_ok);
         Q_ASSERT(!query.hasError());
     }
+     Q_ASSERT(!query.hasError());
 
     auto check1 = query.select().where(OP::EQ("name", GOOD_NAME)).perform();
     Q_ASSERT(!query.hasError());
@@ -421,10 +462,19 @@ void builder_test::test_transcations()
         Q_ASSERT(!d_ok);
         Q_ASSERT(query.hasError());
     }
+     Q_ASSERT(query.hasError());
 
     auto check2 = query.select().where(OP::EQ("name", BAD_NAME)).perform();
     Q_ASSERT(!query.hasError());
     Q_ASSERT(check2.isEmpty());
+}
+
+void builder_test::test_join()
+{
+    const auto query = Query(TARGET_TABLE);
+
+    query.select().join(SECOND_TABLE, {"_id", "some_fkey"}, Join::INNER).perform();
+    qDebug() << query.lastError().text();
 }
 
 QTEST_MAIN(builder_test)

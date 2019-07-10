@@ -8,6 +8,7 @@ struct Selector::SelectorPrivate
     SelectorPrivate(const Query* q, const QStringList& fields)
         : m_query(q)
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())
+        , m_join{""}
         , m_where{""}
         , m_limit{""}
         , m_order{""}
@@ -19,6 +20,7 @@ struct Selector::SelectorPrivate
     const Query*        m_query;
     const QStringList   m_fields;
 
+    QString             m_join;
     QString             m_where;
     QString             m_limit;
     QString             m_order;
@@ -38,6 +40,16 @@ Selector::Selector(const Query* q, const QStringList& fields)
 
 Selector::~Selector()
 { }
+
+Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType)
+{
+    impl->m_join = QString("%1 JOIN %2 on %3")
+                        .arg(QVariant::fromValue(joinType).toString())
+                        .arg(otherTable)
+                        .arg(QString("%1.\"%2\"=%3.\"%4\"")
+                                .arg(impl->m_query->tableName(), joinColumns.first, otherTable, joinColumns.second));
+    return std::move(*this);
+}
 
 Selector Selector::where(OP::Clause&& clause) &&
 {
@@ -91,7 +103,7 @@ QVariantList Selector::perform() &&
     const QString sql = Selector::SELECT_SQL
                     .arg(impl->m_fields.join(", "))
                     .arg(impl->m_query->tableName())
-                    .arg("") //TODO: support join
+                    .arg(impl->m_join) //TODO: support join
                     .arg(impl->m_where.isEmpty() ? "True" : impl->m_where)
                     .arg(tail.join(" "));
 
