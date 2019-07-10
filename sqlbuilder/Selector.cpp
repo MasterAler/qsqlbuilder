@@ -10,9 +10,6 @@ struct Selector::SelectorPrivate
     SelectorPrivate(const Query* q, const QStringList& fields)
         : m_query(q)
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())
-        , m_join{""}
-        , m_joinTable{""}
-        , m_joinDisambigToOther(false)
         , m_where{""}
         , m_limit{""}
         , m_order{""}
@@ -21,12 +18,15 @@ struct Selector::SelectorPrivate
         , m_offset{""}
     { }
 
+    struct JoinPart
+    {
+        QString     m_sql;
+        QString     m_joinTable;
+        bool        m_joinDisambigToOther;
+    };
+
     const Query*        m_query;
     QStringList         m_fields;
-
-    QString             m_join;
-    QString             m_joinTable;
-    bool                m_joinDisambigToOther;
 
     QString             m_where;
     QString             m_limit;
@@ -36,29 +36,51 @@ struct Selector::SelectorPrivate
     QString             m_groupBy;
     QString             m_offset;
 
+    QList<JoinPart>     m_joinParts;
+
+    // This should resolve disambiduation in column names
     void resolveColumnDisambiguation()
     {
-        // This should resolve disambiduation in column names
         QSet<QString> thisColumnSet  = QSet<QString>::fromList(m_query->columnNames());
-        QSet<QString> otherColumnSet = QSet<QString>::fromList(Query::tableColumnNames(m_joinTable));
-        thisColumnSet.intersect(otherColumnSet);
-
-        for(int i = 0; i < m_fields.count(); ++i)
+        for (const auto& part: m_joinParts)
         {
-            QString fieldName = m_fields[i];
-            if (thisColumnSet.contains(fieldName))
-            {
-                QString resolutionFieldName = QString("%1.%2")
-                                                .arg(!m_joinDisambigToOther
-                                                            ? m_query->tableName()
-                                                            : m_joinTable)
-                                                .arg(fieldName);
+            QSet<QString> otherColumnSet = QSet<QString>::fromList(Query::tableColumnNames(part.m_joinTable));
+            otherColumnSet.intersect(thisColumnSet);
 
-                m_where.replace(fieldName, resolutionFieldName);
-                m_where.replace('.', "\".\"");
-                m_fields.replace(i, resolutionFieldName);
+            for(int i = 0; i < m_fields.count(); ++i)
+            {
+                QString fieldName = m_fields[i];
+                if (otherColumnSet.contains(fieldName))
+                {
+                    QString resolutionFieldName = QString("%1.%2")
+                                                    .arg(!part.m_joinDisambigToOther
+                                                                ? m_query->tableName()
+                                                                : part.m_joinTable)
+                                                    .arg(fieldName);
+                    // hacky a bit, but IT WORKS
+                    m_where.replace(fieldName, resolutionFieldName);
+                    m_where.replace('.', "\".\"");
+                    m_fields.replace(i, resolutionFieldName);
+                }
             }
         }
+    }
+
+    //-------
+
+    QString getJoinTail() const
+    {
+        QString result;
+
+        if (!m_joinParts.isEmpty())
+        {
+            QStringList joiner;
+            for (const auto& part: m_joinParts)
+                joiner << part.m_sql;
+            result = joiner.join(' ');
+        }
+
+        return result;
     }
 };
 
@@ -75,13 +97,17 @@ Selector::~Selector()
 
 Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType, bool resolveDisambigToOther)
 {
-    impl->m_joinTable = otherTable;
-    impl->m_joinDisambigToOther = resolveDisambigToOther;
-    impl->m_join = QString("%1 JOIN %2 on %3")
+    SelectorPrivate::JoinPart part;
+
+    part.m_joinTable = otherTable;
+    part.m_joinDisambigToOther = resolveDisambigToOther;
+    part.m_sql = QString("%1 JOIN %2 on %3")
                         .arg(QVariant::fromValue(joinType).toString())
                         .arg(otherTable)
                         .arg(QString("\"%1\".\"%2\"=\"%3\".\"%4\"")
                                 .arg(impl->m_query->tableName(), joinColumns.first, otherTable, joinColumns.second));
+
+    impl->m_joinParts.append(part);
     return std::move(*this);
 }
 
@@ -138,7 +164,7 @@ QVariantList Selector::perform() &&
     const QString sql = Selector::SELECT_SQL
                     .arg(impl->m_fields.join(", "))
                     .arg(impl->m_query->tableName())
-                    .arg(impl->m_join)
+                    .arg(impl->getJoinTail())
                     .arg(impl->m_where.isEmpty() ? "True" : impl->m_where)
                     .arg(tail.join(" "));
 

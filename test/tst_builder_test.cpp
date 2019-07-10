@@ -56,13 +56,12 @@ private slots:
 
     void test_transcations();
     void test_nested_transactions();
-
     void test_column_getter();
-    void test_join();
-
-    void test_join_complex();
-
     void test_select_functions();
+
+    void test_join();
+    void test_join_complex();
+    void test_multiple_joins();
 
 private:
     bool            m_showDebug;
@@ -121,16 +120,36 @@ void builder_test::initTestCase()
 
         if (!conn.tables().contains(SECOND_TABLE))
         {
+            const QString createThirdSql = QString("CREATE TABLE %1 \
+                                                    ( \
+                                                        _id serial NOT NULL, \
+                                                        some_date date NOT NULL DEFAULT CURRENT_DATE, \
+                                                        CONSTRAINT third_table_pkey PRIMARY KEY (_id) \
+                                                    )").arg(THIRD_TABLE);
+            if (!query.exec(createThirdSql))
+            {
+                qCritical() << "table3 creation failed: " << query.lastError().text();
+                throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+            }
+        }
+
+        if (!conn.tables().contains(SECOND_TABLE))
+        {
             const QString createSecondSql = QString("CREATE TABLE %1 \
                                                     ( \
                                                         _id serial NOT NULL, \
                                                         some_text text NOT NULL, \
                                                         some_fkey integer NOT NULL , \
+                                                        date_fkey integer, \
                                                         CONSTRAINT other_table_pkey PRIMARY KEY (_id), \
                                                         CONSTRAINT other_table__some_fkey_fkey FOREIGN KEY (some_fkey) \
                                                         REFERENCES some_object (_id) MATCH SIMPLE \
                                                         ON UPDATE CASCADE \
-                                                        ON DELETE CASCADE \
+                                                        ON DELETE CASCADE, \
+                                                        CONSTRAINT other_table__date_fkey_fkey FOREIGN KEY (date_fkey) \
+                                                        REFERENCES third_table (_id) MATCH SIMPLE \
+                                                        ON UPDATE CASCADE \
+                                                        ON DELETE SET NULL \
                                                     )").arg(SECOND_TABLE);
             if (!query.exec(createSecondSql))
             {
@@ -153,8 +172,12 @@ void builder_test::cleanupTestCase()
     /* Uncomment to make real cleanup, choose appropriate */
 
 //    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
+
+    // -- or full clean --
+
 //    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(TARGET_TABLE));
 //    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(SECOND_TABLE));
+//    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(THIRD_TABLE));
 }
 
 void builder_test::test_insert_sql()
@@ -219,6 +242,15 @@ void builder_test::test_select_basic()
 void builder_test::test_star_selection()
 {
     auto res = Query(TARGET_TABLE).select()
+                                .orderBy("_id", Order::ASC)
+                                .limit(5)
+                                .perform();
+    Q_ASSERT(res.count() == 5);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+
+    res = Query(TARGET_TABLE).select({"*"})
                                 .orderBy("_id", Order::ASC)
                                 .limit(5)
                                 .perform();
@@ -515,10 +547,39 @@ void builder_test::test_nested_transactions()
 void builder_test::test_column_getter()
 {
     auto columns = Query::tableColumnNames(SECOND_TABLE);
-    Q_ASSERT(columns.count() == 3);
+    Q_ASSERT(columns.count() == 4);
 
     if (m_showDebug)
         qInfo() << columns;
+}
+
+void builder_test::test_select_functions()
+{
+    const auto query = Query(TARGET_TABLE);
+
+    auto res = query.select({"COUNT(*) as lol"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("lol"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+
+    res = query.select({"SUM(_id) as strange_sum"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("strange_sum"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
+
+    res = query.select({"MAX(_id) as max_id"}).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(!res.isEmpty());
+    Q_ASSERT(res.first().toMap().contains("max_id"));
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
 }
 
 void builder_test::test_join()
@@ -672,33 +733,116 @@ void builder_test::test_join_complex()
     Q_ASSERT(tst.isEmpty());
 }
 
-void builder_test::test_select_functions()
+void builder_test::test_multiple_joins()
 {
     const auto query = Query(TARGET_TABLE);
+    auto second_query = Query(SECOND_TABLE);
+    const auto third_query = Query(THIRD_TABLE);
 
-    auto res = query.select({"COUNT(*) as lol"}).perform();
+    auto ids = query
+            .insert({"_otype", "name", "guid"})
+            .values({999, "CRAZY_JOIN_TEST", QUuid::createUuid().toString()})
+            .values({999, "CRAZY_JOIN_TEST", QUuid::createUuid().toString()})
+            .values({999, "CRAZY_JOIN_TEST", QUuid::createUuid().toString()})
+            .values({999, "CRAZY_JOIN_TEST", QUuid::createUuid().toString()})
+            .perform();
     Q_ASSERT(!query.hasError());
-    Q_ASSERT(!res.isEmpty());
-    Q_ASSERT(res.first().toMap().contains("lol"));
+    Q_ASSERT(ids.count() == 4);
+
+    auto ids3 = third_query
+            .insert({"some_date"})
+            .values({QDate::currentDate()})
+            .values({QDate::currentDate().addDays(3)})
+            .values({QDate::currentDate().addDays(-3)})
+            .values({QDate::currentDate().addDays(7)})
+            .perform();
+    Q_ASSERT(!third_query.hasError());
+    Q_ASSERT(ids3.count() == 4);
+
+    QList<int> secondIds;
+    bool t_ok = second_query.transact([&](){
+        for(int i=0; i < 4; ++i)
+        {
+            auto ids2 = second_query
+                    .insert({"some_text", "some_fkey", "date_fkey"})
+                    .values({"RECORD_FOR_CRAZY_JOIN_TEST", ids[i], ids3[i]})
+                    .perform();
+            Q_ASSERT(ids2.count() == 1);
+            Q_ASSERT(!second_query.hasError());
+
+            secondIds.append(ids2.first());
+        }
+    });
+    Q_ASSERT(t_ok);
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(secondIds.count() == 4);
+
+    // --- finally, join test ----
+
+    QVariantList joinIds;
+    for(const auto& id: secondIds)
+        joinIds << id;
+
+    auto res = second_query
+                .select({"_id", "some_text", "name", "guid", "some_date"})
+                .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+                .join(THIRD_TABLE, {"date_fkey", "_id"}, Join::INNER)
+                .where(OP::IN("_id", joinIds))
+                .orderBy("_id", Order::ASC)
+                .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(res.count() == 4);
+
+    for(int i=0; i < res.count(); ++i)
+        Q_ASSERT(res[i].toMap()["_id"].toInt() == secondIds[i]);
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(res);
 
-    res = query.select({"SUM(_id) as strange_sum"}).perform();
-    Q_ASSERT(!query.hasError());
+    // --- and a lazy-lamer test
+
+    res = second_query
+                .select()
+                .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+                .join(THIRD_TABLE, {"date_fkey", "_id"}, Join::INNER)
+                .where(OP::IN("_id", joinIds))
+                .orderBy("_id", Order::ASC)
+                .perform();
+    Q_ASSERT(!second_query.hasError());
     Q_ASSERT(!res.isEmpty());
-    Q_ASSERT(res.first().toMap().contains("strange_sum"));
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(res);
 
-    res = query.select({"MAX(_id) as max_id"}).perform();
-    Q_ASSERT(!query.hasError());
-    Q_ASSERT(!res.isEmpty());
-    Q_ASSERT(res.first().toMap().contains("max_id"));
+    QVariantList firstIds;
+    for(const auto& id: ids)
+        firstIds << id;
+
+    res = second_query
+                .select()
+                .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER, true)
+                .join(THIRD_TABLE, {"date_fkey", "_id"}, Join::INNER)
+                .where(OP::IN("_id", firstIds))
+                .orderBy("_id", Order::ASC)
+                .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(res.count() == 4);
+
+    for(int i=0; i < res.count(); ++i)
+        Q_ASSERT(res[i].toMap()["_id"].toInt() == ids[i]);
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(res);
+
+    // -- partial cleanup ---
+
+    QVariantList delList;
+    for(const auto& id: ids3)
+        delList << id;
+
+    bool ok = third_query.delete_(OP::IN("_id", delList)).perform();
+    Q_ASSERT(ok);
+    Q_ASSERT(!third_query.hasError());
 }
 
 QTEST_MAIN(builder_test)
