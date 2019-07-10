@@ -123,9 +123,30 @@ Updater Query::update(const QVariantMap& updateValues) const
     return Updater(this, updateValues);
 }
 
+TransactionLocker Query::createTransactionLock() const
+{
+    return TransactionLocker{this};
+}
+
 QSqlDatabase& Query::defaultConnection()
 {
     static QSqlDatabase dbInstance = QSqlDatabase::addDatabase(Config::DRIVER, QUuid::createUuid().toString());
     return dbInstance;
 }
 
+/**********************************************************************************/
+
+TransactionLocker::TransactionLocker(const Query* q)
+    : m_query(q)
+{
+    if (!m_query->impl->m_DB.transaction())
+        throw std::runtime_error(m_query->lastError().text().toUtf8().constData());
+}
+
+TransactionLocker::~TransactionLocker()
+{
+    if (m_query->hasError())
+        m_query->impl->m_DB.rollback();
+    else
+        m_query->impl->m_DB.commit();
+}

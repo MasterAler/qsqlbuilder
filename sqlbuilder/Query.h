@@ -13,6 +13,7 @@ QT_FORWARD_DECLARE_CLASS(Selector)
 QT_FORWARD_DECLARE_CLASS(Inserter)
 QT_FORWARD_DECLARE_CLASS(Deleter)
 QT_FORWARD_DECLARE_CLASS(Updater)
+QT_FORWARD_DECLARE_CLASS(TransactionLocker)
 
 class Query
 {
@@ -34,6 +35,8 @@ public:
 
     Updater  update(const QVariantMap& updateValues) const;
 
+    TransactionLocker createTransactionLock() const;
+
 public:
     QSqlQuery performSQL(const QString& sql) const;
 
@@ -54,4 +57,22 @@ private:
 private:
     struct QueryPrivate;
     std::unique_ptr<QueryPrivate> impl;
+
+    friend class TransactionLocker;
+};
+
+/*******************************************************************************************/
+
+class TransactionLocker
+{
+    Q_DISABLE_COPY(TransactionLocker)
+public:
+    TransactionLocker(const Query* q);
+    ~TransactionLocker();
+
+    TransactionLocker(TransactionLocker&&) = default;
+    TransactionLocker& operator=(TransactionLocker&&) = default;
+
+private:
+    const Query*        m_query;
 };
