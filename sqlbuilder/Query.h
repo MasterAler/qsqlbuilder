@@ -35,7 +35,7 @@ public:
 
     Updater  update(const QVariantMap& updateValues) const;
 
-    bool transact(std::function<void()>&& operations);
+    bool     transact(std::function<void()>&& operations);
 
 public:
     QSqlQuery performSQL(const QString& sql) const;
@@ -49,6 +49,8 @@ public:
     QString primaryKeyName() const;
 
     QStringList columnNames() const;
+
+    static QStringList tableColumnNames(const QString& tableName);
 
 private:
     static QSqlDatabase& defaultConnection();

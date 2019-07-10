@@ -2,6 +2,8 @@
 #include "Query.h"
 
 #include <QSqlQuery>
+#include <QSqlRecord>
+#include <QSet>
 
 struct Selector::SelectorPrivate
 {
@@ -9,6 +11,7 @@ struct Selector::SelectorPrivate
         : m_query(q)
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())
         , m_join{""}
+        , m_joinTable{""}
         , m_where{""}
         , m_limit{""}
         , m_order{""}
@@ -18,9 +21,11 @@ struct Selector::SelectorPrivate
     { }
 
     const Query*        m_query;
-    const QStringList   m_fields;
+    QStringList         m_fields;
 
     QString             m_join;
+    QString             m_joinTable;
+
     QString             m_where;
     QString             m_limit;
     QString             m_order;
@@ -28,6 +33,31 @@ struct Selector::SelectorPrivate
     QString             m_having;
     QString             m_groupBy;
     QString             m_offset;
+
+    void resolveColumnDisambiguation(bool resolveDisambigToOther)
+    {
+        // This should resolve disambiduation in column names
+        QSet<QString> thisColumnSet  = QSet<QString>::fromList(m_query->columnNames());
+        QSet<QString> otherColumnSet = QSet<QString>::fromList(Query::tableColumnNames(m_joinTable));
+        thisColumnSet.intersect(otherColumnSet);
+
+        for(int i = 0; i < m_fields.count(); ++i)
+        {
+            QString fieldName = m_fields[i];
+            if (thisColumnSet.contains(fieldName))
+            {
+                QString resolutionFieldName = QString("%1.%2")
+                                                .arg(!resolveDisambigToOther
+                                                        ? m_query->tableName()
+                                                        : m_joinTable)
+                                                .arg(fieldName);
+
+                m_where.replace(fieldName, resolutionFieldName);
+                m_where.replace('.', "\".\"");
+                m_fields.replace(i, resolutionFieldName);
+            }
+        }
+    }
 };
 
 /***************************************************************************************/
@@ -41,12 +71,15 @@ Selector::Selector(const Query* q, const QStringList& fields)
 Selector::~Selector()
 { }
 
-Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType)
+Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType, bool resolveDisambigToOther)
 {
+    impl->m_joinTable = otherTable;
+    impl->resolveColumnDisambiguation(resolveDisambigToOther);
+
     impl->m_join = QString("%1 JOIN %2 on %3")
                         .arg(QVariant::fromValue(joinType).toString())
                         .arg(otherTable)
-                        .arg(QString("%1.\"%2\"=%3.\"%4\"")
+                        .arg(QString("\"%1\".\"%2\"=\"%3\".\"%4\"")
                                 .arg(impl->m_query->tableName(), joinColumns.first, otherTable, joinColumns.second));
     return std::move(*this);
 }
@@ -103,16 +136,18 @@ QVariantList Selector::perform() &&
     const QString sql = Selector::SELECT_SQL
                     .arg(impl->m_fields.join(", "))
                     .arg(impl->m_query->tableName())
-                    .arg(impl->m_join) //TODO: support join
+                    .arg(impl->m_join)
                     .arg(impl->m_where.isEmpty() ? "True" : impl->m_where)
                     .arg(tail.join(" "));
 
     QSqlQuery q = impl->m_query->performSQL(sql);
+    QSqlRecord r = q.record();
+
     while(q.next())
     {
         QVariantMap resultRow;
-        for(const QString& field : impl->m_fields)
-            resultRow[field] = q.value(field);
+        for(int i = 0; i < r.count(); ++i)
+            resultRow[r.fieldName(i)] = q.value(i);
 
         result.append(resultRow);
     }
