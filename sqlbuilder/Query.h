@@ -42,7 +42,7 @@ public:
      */
     ~Query();
     
-    Query(Query&&) = default;
+    Query(Query&&);
     Query& operator=(Query&&) = default;
 
     /*!

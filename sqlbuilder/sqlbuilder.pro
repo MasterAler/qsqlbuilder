@@ -4,7 +4,7 @@ QT       += core sql
 
 TARGET = sqlbuilder
 TEMPLATE = lib
-CONFIG += staticlib
+CONFIG += staticlib c++11
 
 SOURCES += \
     Config.cpp \

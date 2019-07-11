@@ -61,6 +61,8 @@ Query::~Query()
     impl->m_DB.close();
 }
 
+Query::Query(Query &&) = default;
+
 void Query::setQueryLoggingEnabled(bool enabled)
 {
     Query::LOG_QUERIES = enabled;

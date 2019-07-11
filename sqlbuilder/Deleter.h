@@ -24,7 +24,7 @@ public:
     Deleter(const Query* q, OP::Clause&& whereClause);
     ~Deleter();
 
-    Deleter(Deleter&&) = default;
+    Deleter(Deleter&&);
     Deleter& operator=(Deleter&&) = default;
 
     /*!

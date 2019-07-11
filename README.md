@@ -222,8 +222,8 @@ And as mentioned in the title, C++11 suppor is required.
 
 Tested on:
 * PostgreSQL 9.4+
-* MSVC 2015 / gcc 4.9+
-* Qt 5.10 (actually Qt's version should not be important)
+* MSVC 2015 / gcc 5.4+
+* Qt 5.6+ (actually Qt's version should not be important, mine was Qt 5.10)
 
 ## Credits
 

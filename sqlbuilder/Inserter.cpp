@@ -29,6 +29,8 @@ Inserter::Inserter(const Query* q, const QStringList& fields)
 Inserter::~Inserter()
 { }
 
+Inserter::Inserter(Inserter &&) = default;
+
 InserterPerformer Inserter::values(const QVariantList& data) &&
 {
     return InserterPerformer(std::move(*this)).values(data);

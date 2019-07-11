@@ -26,6 +26,8 @@ Deleter::Deleter(const Query *q, OP::Clause&& whereClause)
 Deleter::~Deleter()
 { }
 
+Deleter::Deleter(Deleter &&) = default;
+
 bool Deleter::perform() &&
 {
     const QString sql = Deleter::DELETE_SQL
