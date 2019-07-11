@@ -546,7 +546,7 @@ void builder_test::test_nested_transactions()
 
 void builder_test::test_column_getter()
 {
-    auto columns = Query::tableColumnNames(SECOND_TABLE);
+    auto columns = Query().tableColumnNames(SECOND_TABLE);
     Q_ASSERT(columns.count() == 4);
 
     if (m_showDebug)

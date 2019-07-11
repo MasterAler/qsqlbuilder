@@ -103,18 +103,11 @@ QStringList Query::columnNames() const
     return impl->m_columnNames;
 }
 
-QStringList Query::tableColumnNames(const QString& tableName)
+QStringList Query::tableColumnNames(const QString& tableName) const
 {
     QStringList result;
-    QSqlDatabase db = Query::defaultConnection();
 
-    if (!db.isOpen())
-    {
-        if (!db.open())
-            return result;
-    }
-
-    QSqlRecord columns = db.record(tableName);
+    QSqlRecord columns = impl->m_DB.record(tableName);
     for(int i=0; i < columns.count(); ++i)
         result << columns.fieldName(i);
 

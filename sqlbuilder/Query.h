@@ -130,7 +130,7 @@ public:
      * \param tableName         -- name of the table to be examined
      * \return                  -- returns as supposed
      */
-    static QStringList tableColumnNames(const QString& tableName);
+    QStringList tableColumnNames(const QString& tableName) const;
 
 private:
     static QSqlDatabase& defaultConnection();
