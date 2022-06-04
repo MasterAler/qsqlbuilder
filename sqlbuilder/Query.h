@@ -19,6 +19,8 @@ public:
     explicit Query(const QString& tableName = QString(), const QString& pkey = QString());
     ~Query();
 
+    static void setQueryLoggingEnabled(bool enabled);
+
     Selector select(const QStringList& fields = QStringList()) const;
 
     Inserter insert(const QStringList& fields) const;
@@ -34,6 +36,7 @@ public:
 
 private:
     static QSqlDatabase& defaultConnection();
+    static bool LOG_QUERIES;
 
 private:
     QScopedPointer<QueryPrivate> d_ptr;

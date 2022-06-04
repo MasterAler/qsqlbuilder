@@ -41,4 +41,6 @@ Clause GE(const QString& fieldName, const QVariant& value);
 
 Clause IN(const QString& fieldName, const QVariantList& values);
 
+Clause IS_NULL(const QString& fieldName);
+
 } //namespace OP

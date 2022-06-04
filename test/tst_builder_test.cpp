@@ -39,6 +39,8 @@ private slots:
     void test_simple_where();
     void test_comlex_where();
 
+    void test_is_null();
+
 private:
     bool            m_showDebug;
     const QString   TARGET_TABLE;
@@ -96,6 +98,7 @@ void builder_test::initTestCase()
 
     // configure connection 4 library classes
     Config::setConnectionParams("QPSQL", "127.0.0.1", "ksvd4db", "root", "");
+    Query::setQueryLoggingEnabled(true);
 }
 
 void builder_test::cleanupTestCase()
@@ -178,7 +181,8 @@ void builder_test::test_simple_where()
     auto res = Query(TARGET_TABLE).select(QStringList() << "_id" << "name")
                                 .where(OP::EQ("_otype", 2) && (OP::LT("_id", 100) || OP::EQ("guid", "rte")))
                                 .perform();
-    qInfo() << QJsonDocument::fromVariant(res);
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(res);
 }
 
 void builder_test::test_comlex_where()
@@ -186,6 +190,23 @@ void builder_test::test_comlex_where()
     auto res = Query(TARGET_TABLE).select({"_id", "name", "guid"})
             .where(OP::IN("_id", { 2, 31, 25, 10 })).perform();
     qInfo() << QJsonDocument::fromVariant(res);
+}
+
+void builder_test::test_is_null()
+{
+    auto res = Query(TARGET_TABLE)
+            .insert({"_otype", "guid", "name"})
+            .values({999, "SOME_GUID", "EMPTY_PARENTED"})
+            .perform();
+
+    int id = res.first();
+    auto check = Query(TARGET_TABLE)
+            .select()
+            .where(OP::EQ("_id", id) && OP::IS_NULL("_parent"))
+            .perform();
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(check);
 }
 
 QTEST_MAIN(builder_test)
