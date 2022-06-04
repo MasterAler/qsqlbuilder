@@ -34,7 +34,7 @@ Query::setQueryLoggingEnabled(true); // enable/disable logging via qDebug()
 ```
 Logging is essentially useful to check the generated SQL for better understanding the concept, it's likely that examples do not cover all the caveats.
 
-### Raw SQL (something to complex to be generated)
+### Raw SQL (something too complex to be generated)
 
 ```cpp
 QSqlQuery q = Query().performSQL("SELECT _id, name FROM my_table LIMIT 3;"); 
@@ -84,7 +84,7 @@ Same as DELETE, result means "affected rows > 0";
 
 ```cpp
 auto ids = query
-            .insert({"som_number", "guid", "date"})
+            .insert({"some_number", "guid", "date"})
             .values({42, QUuid::createUuid().toString(), QDate::currentDate()})
             .values({42, QUuid::createUuid().toString(), QDate::currentDate().addDays(3)})
             .values({42, QUuid::createUuid().toString(), QDate::currentDate().addDays(-3)})
@@ -176,10 +176,10 @@ If you are not carefull and column's name disambiguation occurs, it's gonna be r
 But things are different with multiple joins. Actually, `join()` is the only method that doesn't overwrite the state being called more than once, accumulating JOIN parts instead. I cannot imagine from the top of my head WHY would anyone write SQL with multiple JOINs and column disambiguation at the same time, so here works a simple rule -- if you do it's either resolved by default or you *may* set a magic flag again... but wherever you do it, resolution's gonna work only in favour of the table in the first `join()` call, whatever it be.
 
 ```cpp
-auto res = second_query
+auto res = complex_query
             .select({"_id", "some_text", "name", "guid", "some_date"})
-            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER, true)  // disambig can ONLY be resolved to this table, no matter where is the flag
-            .join(THIRD_TABLE, {"date_fkey", "_id"}, Join::INNER, true)
+            .join("second_table", {"some_fkey", "_id"}, Join::INNER, true)  // disambig can ONLY be resolved to this table, no matter where is the flag
+            .join("third_table", {"date_fkey", "_id"}, Join::INNER, true)
             .where(OP::IN("_id", joinIds))
             .orderBy("_id", Order::ASC)
             .perform();
