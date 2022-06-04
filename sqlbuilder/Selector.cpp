@@ -3,9 +3,8 @@
 
 #include <QSqlQuery>
 
-class SelectorPrivate
+struct Selector::SelectorPrivate
 {
-public:
     SelectorPrivate(const Query* q, const QStringList& fields)
         : m_query(q)
         , m_fields(!fields.isEmpty() ? fields : q->columnNames())

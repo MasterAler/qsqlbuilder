@@ -4,9 +4,7 @@
 #include <QVariant>
 
 #include "Where.h"
-
 QT_FORWARD_DECLARE_CLASS(Query)
-QT_FORWARD_DECLARE_CLASS(SelectorPrivate)
 
 class Order
 {
@@ -20,7 +18,7 @@ public:
     Q_ENUM(OrderType)
 };
 
-/*******************************************************************************************/
+/***************************************************************************************/
 
 class Selector
 {
@@ -47,6 +45,8 @@ public:
     QVariantList perform() &&;
 
 private:
-    static const QString SELECT_SQL;
+    struct SelectorPrivate;
     std::unique_ptr<SelectorPrivate> impl;
+
+    static const QString SELECT_SQL;
 };

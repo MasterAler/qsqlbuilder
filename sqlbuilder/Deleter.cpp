@@ -4,9 +4,8 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-class DeleterPrivate
+struct Deleter::DeleterPrivate
 {
-public:
     DeleterPrivate(const Query *q, OP::Clause&& whereClause)
         : m_query(q)
         , m_where{std::move(whereClause).getSQl()}
