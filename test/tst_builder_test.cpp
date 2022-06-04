@@ -56,7 +56,10 @@ private slots:
     void test_transcations();
     void test_nested_transactions();
 
+    void test_column_getter();
     void test_join();
+
+    void test_nulls();
 
 private:
     bool            m_showDebug;
@@ -293,6 +296,9 @@ void builder_test::test_error_reporting()
     no_query.select().perform();
     Q_ASSERT(no_query.lastError().isValid());
 
+    no_query.select().join("fuu", {"lsodf", "idd"}, Join::CROSS).perform();
+    Q_ASSERT(no_query.lastError().isValid());
+
     no_query.insert({"lol"}).values({112, 3333}).perform();
     Q_ASSERT(no_query.lastError().isValid());
 
@@ -311,6 +317,9 @@ void builder_test::test_error_reporting()
 
     query.select({"_id"}).limit(1).perform();
     Q_ASSERT(!query.lastError().isValid());
+
+    query.select({"_id"}).join("no_table", {"_otype", "asdfaf"}, Join::LEFT).limit(1).perform();
+    Q_ASSERT(query.lastError().isValid());
 
     query.delete_(OP::EQ("sdfgsdg", 3333)).perform();
     Q_ASSERT(query.lastError().isValid());
@@ -499,12 +508,142 @@ void builder_test::test_nested_transactions()
     Q_ASSERT(check1.count() == 2);
 }
 
+void builder_test::test_column_getter()
+{
+    auto columns = Query::tableColumnNames(SECOND_TABLE);
+    Q_ASSERT(columns.count() == 3);
+
+    if (m_showDebug)
+        qInfo() << columns;
+}
+
 void builder_test::test_join()
 {
     const auto query = Query(TARGET_TABLE);
+    auto second_query = Query(SECOND_TABLE);
 
-    query.select().join(SECOND_TABLE, {"_id", "some_fkey"}, Join::INNER).perform();
-    qDebug() << query.lastError().text();
+    const QString JOIN_RECORD_NAME {"JOIN_TEST"};
+    const QString JOIN_RECORD_DESCR {"JOIN_DESCR"};
+
+    auto ids = query
+            .insert({"_otype", "guid", "name", "descr"})
+            .values({77, QUuid::createUuid().toString(), JOIN_RECORD_NAME, JOIN_RECORD_DESCR})
+            .values({77, QUuid::createUuid().toString(), JOIN_RECORD_NAME, JOIN_RECORD_DESCR})
+            .values({77, QUuid::createUuid().toString(), JOIN_RECORD_NAME, JOIN_RECORD_DESCR})
+            .perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(ids.count() == 3);
+
+    QList<int> otherIds;
+    bool ok = second_query.transact([&]{
+        for (const int& id: ids)
+        {
+            auto res = second_query
+                    .insert({"some_text", "some_fkey"})
+                    .values({QUuid::createUuid().toString(), id})
+                    .perform();
+            Q_ASSERT(!res.isEmpty());
+            otherIds.append(res.first());
+        }
+    });
+    Q_ASSERT(ok);
+    Q_ASSERT(otherIds.count() == 3);
+
+    auto join_res = second_query
+            .select({"some_text", "name", "guid", "descr"})
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(join_res.count() == 3);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(join_res);
+
+    // should fail
+    auto lol = second_query
+            .select({"some_text", "name"})
+            .join(TARGET_TABLE, {"some_fkey", "_id_OOOPS"}, Join::INNER)
+            .perform();
+    Q_ASSERT(second_query.hasError());
+    Q_ASSERT(lol.isEmpty());
+
+    // disambig
+    auto other_join_res = second_query
+            .select({"_id", "some_text", "name", "guid", "descr"})
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .orderBy("_id", Order::ASC)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(other_join_res.count() == 3);
+
+    for(int i=0; i < other_join_res.count(); ++i)
+        Q_ASSERT(other_join_res[i].toMap()["_id"].toInt() == otherIds[i]);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(other_join_res);
+
+    // disambig other
+    other_join_res = second_query
+            .select({"_id", "some_text", "name", "guid", "descr"})
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER, true)
+            .orderBy("_id", Order::ASC)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(other_join_res.count() == 3);
+
+    for(int i=0; i < other_join_res.count(); ++i)
+        Q_ASSERT(other_join_res[i].toMap()["_id"].toInt() == ids[i]);
+
+    if (m_showDebug)
+        qInfo() << QJsonDocument::fromVariant(other_join_res);
+
+    // test for inaccurate users
+    auto all = second_query
+            .select()
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(!other_join_res.isEmpty());
+}
+
+void builder_test::test_nulls()
+{
+    const auto query = Query(TARGET_TABLE);
+    const auto second_query = Query(SECOND_TABLE);
+
+    auto id = query
+            .insert({"name", "guid", "_otype"})
+            .values({"NULL_TEST", "SMTH", 1234})
+            .perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(id.count() == 1);
+
+    auto id2 = second_query
+            .insert({"some_text", "some_fkey"})
+            .values({"OLOLOLOL", id.first()})
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(id2.count() == 1);
+
+    auto lame_join = second_query
+            .select({"_id", "_parent", "some_text", "name", "guid", "descr"})
+            .where(OP::EQ("_id", id2.first()))
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER, true)
+            .orderBy("_id", Order::ASC)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(lame_join.isEmpty());
+
+    auto other_join_res = second_query
+            .select({"_id", "_parent", "some_text", "name", "guid", "descr"})
+            .where(OP::EQ("_id", id2.first()))
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .orderBy("_id", Order::ASC)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(!other_join_res.isEmpty());
+    Q_ASSERT(other_join_res.count() == 1);
+    Q_ASSERT(other_join_res.first().toMap()["_id"].toInt() == id2.first());
 }
 
 QTEST_MAIN(builder_test)

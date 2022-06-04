@@ -28,15 +28,15 @@ struct Query::QueryPrivate
 
         if (!m_DB.isOpen())
         {
-            if (!m_DB.open()) // TODO: error handling on failed connection
-                qCritical() << m_DB.lastError();
+            if (!m_DB.open())
+                throw std::runtime_error("Database was not opened! =(");
         }
 
         m_pkey = pkey.isEmpty() ? m_DB.primaryIndex(m_tableName).fieldName(0) : pkey;
 
         QSqlRecord columns = m_DB.record(m_tableName);
-        for(int i=0; i < columns.count(); ++i)
-            m_columnNames << QString("%1.%2").arg(m_tableName, columns.fieldName(i));
+        for(int i = 0; i < columns.count(); ++i)
+            m_columnNames << columns.fieldName(i);
     }
 
     QSqlDatabase            m_DB;
@@ -101,6 +101,24 @@ QString Query::primaryKeyName() const
 QStringList Query::columnNames() const
 {
     return impl->m_columnNames;
+}
+
+QStringList Query::tableColumnNames(const QString& tableName)
+{
+    QStringList result;
+    QSqlDatabase db = Query::defaultConnection();
+
+    if (!db.isOpen())
+    {
+        if (!db.open())
+            return result;
+    }
+
+    QSqlRecord columns = db.record(tableName);
+    for(int i=0; i < columns.count(); ++i)
+        result << columns.fieldName(i);
+
+    return result;
 }
 
 Selector Query::select(const QStringList& fields) const

@@ -48,7 +48,8 @@ public:
     Selector(Selector&&) = default;
     Selector& operator=(Selector&&) = default;
 
-    Selector join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType);
+    Selector join(const QString& otherTable, const std::pair<QString, QString>& joinColumns
+                  , Join::JoinType joinType, bool resolveDisambigToOther = false);
 
     Selector where(OP::Clause&& clause) &&;
 
