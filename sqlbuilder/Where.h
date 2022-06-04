@@ -9,9 +9,8 @@ namespace OP
 class Clause
 {
 public:
-    //TODO: escape input
-    Clause(const QString& field, const QString& op, const QVariant& value)
-        : m_sql(QString("\"%1\" %2 '%3'").arg(field, op).arg(value.toString()/*.replace('\'', "''")*/))
+    Clause(const QString& field, const QString& op, const QString& value)
+        : m_sql(QString("\"%1\" %2 %3").arg(field, op, value))
     { }
 
     Clause operator!() &&;
@@ -22,8 +21,10 @@ public:
 
     QString getSQl() &&;
 
+    static QString escapeValue(const QVariant& value);
+
 private:
-    QString         m_sql;
+    QString     m_sql;
 };
 
 Clause EQ(const QString& fieldName, const QVariant& value);
@@ -38,6 +39,6 @@ Clause LE(const QString& fieldName, const QVariant& value);
 
 Clause GE(const QString& fieldName, const QVariant& value);
 
-Clause IN(const QString& fieldName, const QVariantList& value);
+Clause IN(const QString& fieldName, const QVariantList& values);
 
 } //namespace OP

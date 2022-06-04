@@ -93,18 +93,9 @@ void builder_test::test_simple_where()
 
 void builder_test::test_comlex_where()
 {
-//    auto res = Query("object").select(QStringList() << "_id" << "name")
-//                                ->where(WhereConcat::AND, {
-//                                            {"_otype", OP::EQ, 1}
-//                                        })
-//                                ->where(WhereConcat::OR, {
-//                                            {"_otype", OP::EQ, 3}
-//                                        })
-//                                ->where(WhereConcat::AND, {
-//                                            {"_id", OP::LT, 6}
-//                                        })
-//                                ->perform();
-//    qInfo() << QJsonDocument::fromVariant(res);
+    auto res = Query("object").select({"_id", "name", "guid"})
+            .where(OP::IN("_id", { 2, 31, 25, 10 })).perform();
+    qInfo() << QJsonDocument::fromVariant(res);
 }
 
 QTEST_MAIN(builder_test)

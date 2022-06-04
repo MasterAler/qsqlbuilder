@@ -80,7 +80,6 @@ Selector Selector::offset(int offset) &&
 
 QVariant Selector::perform() &&
 {
-
     QVariantList result;
 
     QStringList tail = QStringList()
@@ -94,7 +93,7 @@ QVariant Selector::perform() &&
                     .arg(impl->m_fields.join(", "))
                     .arg(impl->m_query->tableName())
                     .arg("") //TODO: support join
-                    .arg(impl->m_where.isEmpty() ? "True" : impl->m_where) // TODO: WHERE
+                    .arg(impl->m_where.isEmpty() ? "True" : impl->m_where)
                     .arg(tail.join(" "));
 
     QSqlQuery q = impl->m_query->performSQL(sql);
