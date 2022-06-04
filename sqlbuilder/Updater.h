@@ -13,6 +13,13 @@ public:
     Updater(const Query* q, const QVariantMap& updateValues);
     ~Updater();
 
+    Updater(Updater&&) = default;
+    Updater& operator=(Updater&&) = default;
+
+    Updater where(OP::Clause&& clause) &&;
+
+    bool perform() &&;
+
 private:
     struct UpdaterPrivate;
     std::unique_ptr<UpdaterPrivate> impl;
