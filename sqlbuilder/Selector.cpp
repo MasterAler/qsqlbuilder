@@ -82,14 +82,14 @@ QVariant Selector::perform() &&
 {
     QVariantList result;
 
-    QStringList tail = QStringList()
+    const QStringList tail = QStringList()
                             << impl->m_groupBy
                             << impl->m_having
                             << impl->m_order
                             << impl->m_limit
                             << impl->m_offset;
 
-    QString sql = Selector::SELECT_SQL
+    const QString sql = Selector::SELECT_SQL
                     .arg(impl->m_fields.join(", "))
                     .arg(impl->m_query->tableName())
                     .arg("") //TODO: support join
