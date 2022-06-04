@@ -27,6 +27,8 @@ Updater::Updater(const Query* q, const QVariantMap& updateValues)
 Updater::~Updater()
 { }
 
+Updater::Updater(Updater &&) = default;
+
 Updater Updater::where(OP::Clause&& clause) &&
 {
     impl->m_where = std::move(clause).getSQl();

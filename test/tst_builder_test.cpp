@@ -75,93 +75,97 @@ void builder_test::initTestCase()
 {
     /* setup test tables */
 
-    QSqlDatabase conn = QSqlDatabase::addDatabase("QPSQL", "LOL_TEST");
-    conn.setHostName("127.0.0.1");
-    conn.setDatabaseName("ksvd4db");
-    conn.setUserName("root");
-    conn.setPassword("");
-
-    if (!conn.open())
-        qCritical() << "DATABASE IS NOT AVAILABLE";
-    else
+    const QString CONN_NAME {"LOL_TEST"};
     {
-        const QString dbRole{"su"};
-        QSqlQuery query(conn);
+        QSqlDatabase conn = QSqlDatabase::addDatabase("QPSQL", CONN_NAME);
+        conn.setHostName("127.0.0.1");
+        conn.setDatabaseName("ksvd4db");
+        conn.setUserName("postgres");
+        conn.setPassword("");
 
-        if (!conn.tables().contains(TARGET_TABLE))
+        if (!conn.open())
+            qCritical() << "DATABASE IS NOT AVAILABLE";
+        else
         {
-            const QString createSQL = QString("CREATE TABLE %1 \
-                                              ( \
-                                                  _id serial NOT NULL, \
-                                                  _otype integer NOT NULL, \
-                                                  _parent integer, \
-                                                  guid text NOT NULL, \
-                                                  name text NOT NULL, \
-                                                  descr text, \
-                                                  CONSTRAINT some_object_pkey PRIMARY KEY (_id) \
-                                              );").arg(TARGET_TABLE);
+            const QString dbRole{"su"};
+            QSqlQuery query(conn);
 
-            if (!query.exec(createSQL))
+            if (!conn.tables().contains(TARGET_TABLE))
             {
-                qCritical() << "table1 creation failed: " << query.lastError().text();
-                throw std::runtime_error("TEST TABLE1 CREATION FAILED");
+                const QString createSQL = QString("CREATE TABLE %1 \
+                                                  ( \
+                                                      _id serial NOT NULL, \
+                                                      _otype integer NOT NULL, \
+                                                      _parent integer, \
+                                                      guid text NOT NULL, \
+                                                      name text NOT NULL, \
+                                                      descr text, \
+                                                      CONSTRAINT some_object_pkey PRIMARY KEY (_id) \
+                                                  );").arg(TARGET_TABLE);
+
+                if (!query.exec(createSQL))
+                {
+                    qCritical() << "table1 creation failed: " << query.lastError().text();
+                    throw std::runtime_error("TEST TABLE1 CREATION FAILED");
+                }
+
+                const QString ownerSQL = QString("ALTER TABLE %1 OWNER to %2;").arg(TARGET_TABLE, dbRole);
+
+                if (!query.exec(ownerSQL))
+                    qCritical() << "owner change failed";
+
+                const QString grantSQL = QString("GRANT ALL ON TABLE %1 TO %2;").arg(TARGET_TABLE, dbRole);
+
+                if (!query.exec(grantSQL))
+                    qCritical() << "grant role failed";
             }
 
-            const QString ownerSQL = QString("ALTER TABLE %1 OWNER to %2;").arg(TARGET_TABLE, dbRole);
-
-            if (!query.exec(ownerSQL))
-                qCritical() << "owner change failed";
-
-            const QString grantSQL = QString("GRANT ALL ON TABLE %1 TO %2;").arg(TARGET_TABLE, dbRole);
-
-            if (!query.exec(grantSQL))
-                qCritical() << "grant role failed";
-        }
-
-        if (!conn.tables().contains(SECOND_TABLE))
-        {
-            const QString createThirdSql = QString("CREATE TABLE %1 \
-                                                    ( \
-                                                        _id serial NOT NULL, \
-                                                        some_date date NOT NULL DEFAULT CURRENT_DATE, \
-                                                        CONSTRAINT third_table_pkey PRIMARY KEY (_id) \
-                                                    )").arg(THIRD_TABLE);
-            if (!query.exec(createThirdSql))
+            if (!conn.tables().contains(SECOND_TABLE))
             {
-                qCritical() << "table3 creation failed: " << query.lastError().text();
-                throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+                const QString createThirdSql = QString("CREATE TABLE %1 \
+                                                        ( \
+                                                            _id serial NOT NULL, \
+                                                            some_date date NOT NULL DEFAULT CURRENT_DATE, \
+                                                            CONSTRAINT third_table_pkey PRIMARY KEY (_id) \
+                                                        )").arg(THIRD_TABLE);
+                if (!query.exec(createThirdSql))
+                {
+                    qCritical() << "table3 creation failed: " << query.lastError().text();
+                    throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+                }
             }
-        }
 
-        if (!conn.tables().contains(SECOND_TABLE))
-        {
-            const QString createSecondSql = QString("CREATE TABLE %1 \
-                                                    ( \
-                                                        _id serial NOT NULL, \
-                                                        some_text text NOT NULL, \
-                                                        some_fkey integer NOT NULL , \
-                                                        date_fkey integer, \
-                                                        CONSTRAINT other_table_pkey PRIMARY KEY (_id), \
-                                                        CONSTRAINT other_table__some_fkey_fkey FOREIGN KEY (some_fkey) \
-                                                        REFERENCES some_object (_id) MATCH SIMPLE \
-                                                        ON UPDATE CASCADE \
-                                                        ON DELETE CASCADE, \
-                                                        CONSTRAINT other_table__date_fkey_fkey FOREIGN KEY (date_fkey) \
-                                                        REFERENCES third_table (_id) MATCH SIMPLE \
-                                                        ON UPDATE CASCADE \
-                                                        ON DELETE SET NULL \
-                                                    )").arg(SECOND_TABLE);
-            if (!query.exec(createSecondSql))
+            if (!conn.tables().contains(SECOND_TABLE))
             {
-                qCritical() << "table2 creation failed: " << query.lastError().text();
-                throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+                const QString createSecondSql = QString("CREATE TABLE %1 \
+                                                        ( \
+                                                            _id serial NOT NULL, \
+                                                            some_text text NOT NULL, \
+                                                            some_fkey integer NOT NULL , \
+                                                            date_fkey integer, \
+                                                            CONSTRAINT other_table_pkey PRIMARY KEY (_id), \
+                                                            CONSTRAINT other_table__some_fkey_fkey FOREIGN KEY (some_fkey) \
+                                                            REFERENCES some_object (_id) MATCH SIMPLE \
+                                                            ON UPDATE CASCADE \
+                                                            ON DELETE CASCADE, \
+                                                            CONSTRAINT other_table__date_fkey_fkey FOREIGN KEY (date_fkey) \
+                                                            REFERENCES third_table (_id) MATCH SIMPLE \
+                                                            ON UPDATE CASCADE \
+                                                            ON DELETE SET NULL \
+                                                        )").arg(SECOND_TABLE);
+                if (!query.exec(createSecondSql))
+                {
+                    qCritical() << "table2 creation failed: " << query.lastError().text();
+                    throw std::runtime_error("TEST TABLE2 CREATION FAILED");
+                }
             }
+            qInfo() << "sample tables prepared";
         }
     }
-    qInfo() << "sample table 1 prepared";
+    QSqlDatabase::removeDatabase(CONN_NAME);
 
     // configure connection 4 library classes
-    Config::setConnectionParams("QPSQL", "127.0.0.1", "ksvd4db", "root", "");
+    Config::setConnectionParams("QPSQL", "127.0.0.1", "ksvd4db", "postgres", "");
     Query::setQueryLoggingEnabled(true);
 
     Query().performSQL(QString("TRUNCATE TABLE %1 CASCADE;").arg(TARGET_TABLE));
@@ -171,7 +175,7 @@ void builder_test::cleanupTestCase()
 {
     /* Uncomment to make real cleanup, choose appropriate */
 
-//    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
+    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
 
     // -- or full clean --
 

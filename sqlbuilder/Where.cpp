@@ -46,7 +46,6 @@ QString Clause::escapeValue(const QVariant& value)
         result = value.toString();
         break;
 
-#if QT_CONFIG(datestring)
     case QVariant::Date:
         result = value.toDate().isValid()
                         ? value.toDate().toString(Qt::ISODate)
@@ -62,7 +61,7 @@ QString Clause::escapeValue(const QVariant& value)
                         ? value.toDateTime().toString(Qt::ISODate)
                         : NULL_STR;
         break;
-#endif
+
     case QVariant::String:
     case QVariant::Char:
         result = value.toString().trimmed().replace('\'', "''");

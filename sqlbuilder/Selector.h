@@ -84,7 +84,7 @@ public:
     explicit Selector(const Query* q, const QStringList& fields);
     ~Selector();
 
-    Selector(Selector&&) = default;
+    Selector(Selector&&);
     Selector& operator=(Selector&&) = default;
 
     /*!

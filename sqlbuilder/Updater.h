@@ -27,7 +27,7 @@ public:
     Updater(const Query* q, const QVariantMap& updateValues);
     ~Updater();
 
-    Updater(Updater&&) = default;
+    Updater(Updater&&);
     Updater& operator=(Updater&&) = default;
 
     /*!

@@ -95,6 +95,8 @@ Selector::Selector(const Query* q, const QStringList& fields)
 Selector::~Selector()
 { }
 
+Selector::Selector(Selector &&) = default;
+
 Selector Selector::join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType, bool resolveDisambigToOther)
 {
     SelectorPrivate::JoinPart part;

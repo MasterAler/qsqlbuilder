@@ -23,7 +23,7 @@ public:
     Inserter(const Query* q, const QStringList& fields);
     ~Inserter();
 
-    Inserter(Inserter&&) = default;
+    Inserter(Inserter&&);
     Inserter& operator=(Inserter&&) = default;
 
     /*!
