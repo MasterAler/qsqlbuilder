@@ -18,7 +18,7 @@ public:
     explicit Query(const QString& tableName = QString());
     ~Query();
 
-    std::unique_ptr<Selector> select(const QStringList& fields = QStringList()) const;
+    Selector select(const QStringList& fields = QStringList()) const;
 
 public:
     QSqlQuery performSQL(const QString& sql) const;
@@ -27,7 +27,7 @@ public:
 
     QStringList columnNames() const;
 
-private:
+//private:
     static QSqlDatabase& defaultConnection();
 
 private:

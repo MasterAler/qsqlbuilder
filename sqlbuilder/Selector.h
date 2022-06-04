@@ -1,6 +1,5 @@
 #pragma once
 
-#include <tuple>
 #include <memory>
 
 #include <QEnableSharedFromThis>
@@ -10,8 +9,6 @@
 
 QT_FORWARD_DECLARE_CLASS(Query)
 QT_FORWARD_DECLARE_CLASS(SelectorPrivate)
-
-//---------------------------------- *** here go helpers *** -------------------------------//
 
 class Order
 {
@@ -25,37 +22,34 @@ public:
     Q_ENUM(OrderType)
 };
 
-
 /*******************************************************************************************/
 
 class Selector
 {
     Q_GADGET
-    Q_DECLARE_PRIVATE(Selector)
     Q_DISABLE_COPY(Selector)
-
 public:
     explicit Selector(const Query* q, const QStringList& fields);
-    Selector(Selector&&) = default;
     ~Selector();
 
+    Selector(Selector&&) = default;
     Selector& operator=(Selector&&) = default;
 
-    Selector* where(OP::Clause&& clause);
+    Selector where(OP::Clause&& clause) &&;
 
-    Selector* limit(int count);
+    Selector limit(int count) &&;
 
-    Selector* orderBy(const QString& field, Order::OrderType selectOrder);
+    Selector orderBy(const QString& field, Order::OrderType selectOrder) &&;
 
-    Selector* groupBy(const QString& field);
+    Selector groupBy(const QString& field) &&;
 
-    Selector* having(const QString& havingClause);
+    Selector having(const QString& havingClause) &&;
 
-    Selector* offset(int offset);
+    Selector offset(int offset) &&;
 
-    QVariant perform();
+    QVariant perform() &&;
 
 private:
     static const QString SELECT_SQL;
-    QScopedPointer<SelectorPrivate> d_ptr;
+    std::unique_ptr<SelectorPrivate> impl;
 };

@@ -61,10 +61,10 @@ void builder_test::test_raw_sql()
 void builder_test::test_select_basic()
 {
     auto res = Query("object").select(QStringList() << "_id" << "name")
-                                ->orderBy("_id", Order::DESC)
-                                ->limit(3)
-                                ->offset(20)
-                                ->perform();
+                                .orderBy("_id", Order::DESC)
+                                .limit(3)
+                                .offset(20)
+                                .perform();
     Q_ASSERT(res.toList().count() == 3);
 
     if (m_showDebug)
@@ -74,9 +74,9 @@ void builder_test::test_select_basic()
 void builder_test::test_star_selection()
 {
     auto res = Query("object").select()
-                                ->orderBy("_id", Order::ASC)
-                                ->limit(5)
-                                ->perform();
+                                .orderBy("_id", Order::ASC)
+                                .limit(5)
+                                .perform();
     Q_ASSERT(res.toList().count() == 5);
 
     if (m_showDebug)
@@ -86,8 +86,8 @@ void builder_test::test_star_selection()
 void builder_test::test_simple_where()
 {
     auto res = Query("object").select(QStringList() << "_id" << "name")
-                                ->where(OP::EQ("_otype", 2) && (OP::LT("_id", 100) || OP::EQ("guid", "rte")))
-                                ->perform();
+                                .where(OP::EQ("_otype", 2) && (OP::LT("_id", 100) || OP::EQ("guid", "rte")))
+                                .perform();
     qInfo() << QJsonDocument::fromVariant(res);
 }
 

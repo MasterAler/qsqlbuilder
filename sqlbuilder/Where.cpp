@@ -61,5 +61,4 @@ Clause IN(const QString &fieldName, const QVariantList &value)
     return Clause{fieldName, "IN", QString("(%1)").arg(QVariant(value).toStringList().join(','))};
 }
 
-
 }

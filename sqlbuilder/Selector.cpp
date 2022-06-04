@@ -34,90 +34,74 @@ public:
 const QString Selector::SELECT_SQL { "SELECT %1 FROM %2 %3 WHERE %4 %5;" };
 
 Selector::Selector(const Query* q, const QStringList& fields)
-    : d_ptr(new SelectorPrivate(q, fields))
+    : impl(new SelectorPrivate(q, fields))
 { }
 
 Selector::~Selector()
 { }
 
-Selector* Selector::where(OP::Clause&& clause)
+Selector Selector::where(OP::Clause&& clause) &&
 {
-    Q_D(Selector);
-    d->m_where = std::move(clause).getSQl();
-    return this;
+    impl->m_where = std::move(clause).getSQl();
+    return std::move(*this);
 }
 
-
-Selector* Selector::limit(int count)
+Selector Selector::limit(int count) &&
 {
-    Q_D(Selector);
-    d->m_limit = count > 0
+    impl->m_limit = count > 0
                     ? QString("LIMIT %1").arg(count)
                     : "";
-
-    return this;
+    return std::move(*this);
 }
 
-
-Selector* Selector::orderBy(const QString& field, Order::OrderType selectOrder)
+Selector Selector::orderBy(const QString& field, Order::OrderType selectOrder) &&
 {
-    Q_D(Selector);
-    d->m_order = QString("ORDER BY %1 %2").arg(field).arg(QVariant::fromValue(selectOrder).toString());
-
-    return this;
+    impl->m_order = QString("ORDER BY %1 %2").arg(field).arg(QVariant::fromValue(selectOrder).toString());
+    return std::move(*this);
 }
 
-
-Selector* Selector::groupBy(const QString& field)
+Selector Selector::groupBy(const QString& field) &&
 {
-    Q_D(Selector);
-    d->m_groupBy = QString("GROUP BY %1").arg(field);
-
-    return this;
+    impl->m_groupBy = QString("GROUP BY %1").arg(field);
+    return std::move(*this);
 }
 
-
-Selector* Selector::having(const QString& havingClause)
+Selector Selector::having(const QString& havingClause) &&
 {
-    Q_D(Selector);
-    d->m_having = QString("HAVING %1").arg(havingClause);
-
-    return this;
+    impl->m_having = QString("HAVING %1").arg(havingClause);
+    return std::move(*this);
 }
 
-
-Selector* Selector::offset(int offset)
+Selector Selector::offset(int offset) &&
 {
-    Q_D(Selector);
-    d->m_offset = QString("OFFSET %1").arg(offset);
-
-    return this;
+    impl->m_offset = QString("OFFSET %1").arg(offset);
+    return std::move(*this);
 }
 
-QVariant Selector::perform()
+QVariant Selector::perform() &&
 {
-    Q_D(Selector);
+
     QVariantList result;
 
     QStringList tail = QStringList()
-                            << d->m_groupBy
-                            << d->m_having
-                            << d->m_order
-                            << d->m_limit
-                            << d->m_offset;
+                            << impl->m_groupBy
+                            << impl->m_having
+                            << impl->m_order
+                            << impl->m_limit
+                            << impl->m_offset;
 
     QString sql = Selector::SELECT_SQL
-                    .arg(d->m_fields.join(", "))
-                    .arg(d->m_query->tableName())
+                    .arg(impl->m_fields.join(", "))
+                    .arg(impl->m_query->tableName())
                     .arg("") //TODO: support join
-                    .arg(d->m_where.isEmpty() ? "True" : d->m_where) // TODO: WHERE
+                    .arg(impl->m_where.isEmpty() ? "True" : impl->m_where) // TODO: WHERE
                     .arg(tail.join(" "));
 
-    QSqlQuery q = d->m_query->performSQL(sql);
+    QSqlQuery q = impl->m_query->performSQL(sql);
     while(q.next())
     {
         QVariantMap resultRow;
-        for(const QString& field:  d->m_fields)
+        for(const QString& field:  impl->m_fields)
             resultRow[field] = q.value(field);
 
         result.append(resultRow);

@@ -74,9 +74,9 @@ QStringList Query::columnNames() const
     return d->m_columnNames;
 }
 
-std::unique_ptr<Selector> Query::select(const QStringList& fields) const
+Selector Query::select(const QStringList& fields) const
 {
-    return std::unique_ptr<Selector>(new Selector(this, fields));
+    return Selector(this, fields);
 }
 
 QSqlDatabase& Query::defaultConnection()
