@@ -25,7 +25,7 @@ public:
 
     QStringList columnNames() const;
 
-//private:
+private:
     static QSqlDatabase& defaultConnection();
 
 private:

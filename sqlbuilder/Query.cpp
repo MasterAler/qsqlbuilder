@@ -29,7 +29,7 @@ public:
 
         QSqlRecord columns = m_DB.record(m_tableName);
         for(int i=0; i < columns.count(); ++i)
-            m_columnNames << columns.fieldName(i);
+            m_columnNames << QString("%1.%2").arg(m_tableName, columns.fieldName(i));
     }
 
     mutable QSqlDatabase    m_DB;
