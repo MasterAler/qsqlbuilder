@@ -1,6 +1,7 @@
 #include "Query.h"
 #include "Config.h"
 #include "Selector.h"
+#include "Inserter.h"
 
 #include <QSqlDatabase>
 #include <QSqlRecord>
@@ -77,6 +78,11 @@ QStringList Query::columnNames() const
 Selector Query::select(const QStringList& fields) const
 {
     return Selector(this, fields);
+}
+
+Inserter Query::insert(const QStringList& fields, const QVariantList& data) const
+{
+    return Inserter(this, fields, data);
 }
 
 QSqlDatabase& Query::defaultConnection()

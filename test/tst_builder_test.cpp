@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "Query.h"
 #include "Selector.h"
+#include "Inserter.h"
 
 class builder_test : public QObject
 {
@@ -31,6 +32,8 @@ private slots:
 
     void test_simple_where();
     void test_comlex_where();
+
+    void test_insert_simple();
 
 private:
     bool m_showDebug;
@@ -96,6 +99,11 @@ void builder_test::test_comlex_where()
     auto res = Query("object").select({"_id", "name", "guid"})
             .where(OP::IN("_id", { 2, 31, 25, 10 })).perform();
     qInfo() << QJsonDocument::fromVariant(res);
+}
+
+void builder_test::test_insert_simple()
+{
+//    Query("object_settings").insert({"key", "value"}, { {"hui", 22}, {"lol", 33} });
 }
 
 QTEST_MAIN(builder_test)

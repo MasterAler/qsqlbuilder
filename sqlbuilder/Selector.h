@@ -1,8 +1,6 @@
 #pragma once
 
 #include <memory>
-
-#include <QEnableSharedFromThis>
 #include <QVariant>
 
 #include "Where.h"
