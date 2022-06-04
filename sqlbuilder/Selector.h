@@ -6,6 +6,24 @@
 #include "Where.h"
 QT_FORWARD_DECLARE_CLASS(Query)
 
+//--------------------------- *** helpers go here *** ----------------------------------//
+
+class Join
+{
+    Q_GADGET
+public:
+    enum JoinType
+    {
+        INNER,
+        LEFT,
+        RIGHT,
+        CROSS
+    };
+    Q_ENUM(JoinType)
+};
+
+//---
+
 class Order
 {
     Q_GADGET
@@ -29,6 +47,8 @@ public:
 
     Selector(Selector&&) = default;
     Selector& operator=(Selector&&) = default;
+
+    Selector join(const QString& otherTable, const std::pair<QString, QString>& joinColumns, Join::JoinType joinType);
 
     Selector where(OP::Clause&& clause) &&;
 

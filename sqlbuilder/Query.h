@@ -19,7 +19,7 @@ class Query
 {
     Q_DISABLE_COPY(Query)
 public:
-    explicit Query(const QString& tableName = QString(), const QString& pkey = QString());
+     Query(const QString& tableName = QString(), const QString& pkey = QString());
     ~Query();
 
     Query(Query&&) = default;

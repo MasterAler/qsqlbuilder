@@ -20,7 +20,7 @@ struct Inserter::InserterPrivate
 
 /***************************************************************************************/
 
-const QString Inserter::INSERT_SQL {"INSERT INTO %1 %2 VALUES %3 RETURNING %4; "};
+const QString Inserter::INSERT_SQL { "INSERT INTO %1 %2 VALUES %3 RETURNING %4;" };
 
 Inserter::Inserter(const Query* q, const QStringList& fields)
     : impl(new InserterPrivate(q, fields))
@@ -31,16 +31,16 @@ Inserter::~Inserter()
 
 InserterPerformer Inserter::values(const QVariantList& data) &&
 {
-    return InserterPerformer(impl->m_query, impl->m_fields).values(data);
+    return InserterPerformer(std::move(*this)).values(data);
 }
 
 /***************************************************************************************/
 
-InserterPerformer::InserterPerformer(const Query* q, const QStringList& fields)
-    : Inserter(q, fields)
+InserterPerformer::~InserterPerformer()
 { }
 
-InserterPerformer::~InserterPerformer()
+InserterPerformer::InserterPerformer(Inserter&& inserter)
+    : impl(std::move(inserter.impl))
 { }
 
 InserterPerformer InserterPerformer::values(const QVariantList& data) &&
