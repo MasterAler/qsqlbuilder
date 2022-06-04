@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tuple>
+#include <memory>
 
 #include <QEnableSharedFromThis>
 #include <QVariant>
@@ -27,35 +28,34 @@ public:
 
 /*******************************************************************************************/
 
-class Selector: public QEnableSharedFromThis<Selector>
+class Selector
 {
     Q_GADGET
     Q_DECLARE_PRIVATE(Selector)
     Q_DISABLE_COPY(Selector)
+
 public:
+    explicit Selector(const Query* q, const QStringList& fields);
+    Selector(Selector&&) = default;
     ~Selector();
 
-    static QSharedPointer<Selector> create(const Query* q, const QStringList& fields);
+    Selector& operator=(Selector&&) = default;
 
-    QSharedPointer<Selector> where(OP::Clause&& clause);
+    Selector* where(OP::Clause&& clause);
 
-    QSharedPointer<Selector> limit(int count);
+    Selector* limit(int count);
 
-    QSharedPointer<Selector> orderBy(const QString& field, Order::OrderType selectOrder);
+    Selector* orderBy(const QString& field, Order::OrderType selectOrder);
 
-    QSharedPointer<Selector> groupBy(const QString& field);
+    Selector* groupBy(const QString& field);
 
-    QSharedPointer<Selector> having(const QString& havingClause);
+    Selector* having(const QString& havingClause);
 
-    QSharedPointer<Selector> offset(int offset);
+    Selector* offset(int offset);
 
     QVariant perform();
 
 private:
-    friend QSharedPointer<Selector>;
-    explicit Selector(const Query* q, const QStringList& fields);
-
     static const QString SELECT_SQL;
-
     QScopedPointer<SelectorPrivate> d_ptr;
 };

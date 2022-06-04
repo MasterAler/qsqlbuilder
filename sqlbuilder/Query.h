@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <QObject>
 #include <QScopedPointer>
 #include <QSqlQuery>
@@ -16,7 +18,7 @@ public:
     explicit Query(const QString& tableName = QString());
     ~Query();
 
-    QSharedPointer<Selector> select(const QStringList& fields = QStringList());
+    std::unique_ptr<Selector> select(const QStringList& fields = QStringList()) const;
 
 public:
     QSqlQuery performSQL(const QString& sql) const;

@@ -4,7 +4,9 @@ SQLBUILDER_DIR = $$PWD/sqlbuilder
 
 HEADERS += \
         $$SQLBUILDER_DIR/Config.h \
-        $$SQLBUILDER_DIR/Query.h
+        $$SQLBUILDER_DIR/Query.h \
+        $$SQLBUILDER_DIR/Selector.h \
+        $$SQLBUILDER_DIR/Where.h
 
 INCLUDEPATH *= $$SQLBUILDER_DIR
 
