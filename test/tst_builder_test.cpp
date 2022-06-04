@@ -12,6 +12,7 @@
 #include "Query.h"
 #include "Selector.h"
 #include "Inserter.h"
+#include "Deleter.h"
 
 class builder_test : public QObject
 {
@@ -40,6 +41,12 @@ private slots:
     void test_comlex_where();
 
     void test_is_null();
+
+    void test_delete_simple();
+    void test_insert_delete();
+
+    void test_error_reporting();
+    void test_insert_wrong_usage();
 
 private:
     bool            m_showDebug;
@@ -99,12 +106,16 @@ void builder_test::initTestCase()
     // configure connection 4 library classes
     Config::setConnectionParams("QPSQL", "127.0.0.1", "ksvd4db", "root", "");
     Query::setQueryLoggingEnabled(true);
+
+    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
 }
 
 void builder_test::cleanupTestCase()
 {
-    /* Uncomment to make real cleanup */
+    /* Uncomment to make real cleanup, choose appropriate */
+
 //    Query(TARGET_TABLE).performSQL(QString("TRUNCATE TABLE %1;").arg(TARGET_TABLE));
+//    Query(TARGET_TABLE).performSQL(QString("DROP TABLE %1;").arg(TARGET_TABLE));
 }
 
 void builder_test::test_insert_sql()
@@ -158,7 +169,7 @@ void builder_test::test_select_basic()
                                 .limit(3)
                                 .offset(20)
                                 .perform();
-    Q_ASSERT(res.toList().count() == 3);
+    Q_ASSERT(res.count() == 3);
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(res);
@@ -170,7 +181,7 @@ void builder_test::test_star_selection()
                                 .orderBy("_id", Order::ASC)
                                 .limit(5)
                                 .perform();
-    Q_ASSERT(res.toList().count() == 5);
+    Q_ASSERT(res.count() == 5);
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(res);
@@ -207,6 +218,88 @@ void builder_test::test_is_null()
 
     if (m_showDebug)
         qInfo() << QJsonDocument::fromVariant(check);
+}
+
+void builder_test::test_delete_simple()
+{
+    auto target = Query(TARGET_TABLE)
+            .select({"_id"})
+            .limit(5)
+            .orderBy("_id", Order::DESC)
+            .perform();
+    Q_ASSERT(target.count() == 5);
+
+    QVariantList ids;
+    for (const auto& item : target)
+        ids << item.toMap()["_id"];
+
+    bool ok = Query(TARGET_TABLE).delete_(OP::IN("_id", ids)).perform();
+    Q_ASSERT(ok);
+}
+
+void builder_test::test_insert_delete()
+{
+    auto query = Query(TARGET_TABLE);
+    auto id = query
+            .insert({"_otype", "name", "guid"})
+            .values({123, "GUID_&&%$%$#$_GUID_", "TO_DELETE"})
+            .perform();
+    Q_ASSERT(id.count() > 0);
+    Q_ASSERT(!query.lastError().isValid());
+
+    bool ok = query.delete_(OP::EQ("_id", id.first())).perform();
+    Q_ASSERT(ok);
+    Q_ASSERT(!query.lastError().isValid());
+}
+
+void builder_test::test_error_reporting()
+{
+    auto no_query = Query("no_table");
+
+    no_query.select().perform();
+    Q_ASSERT(no_query.lastError().isValid());
+
+    no_query.insert({"lol"}).values({112, 3333}).perform();
+    Q_ASSERT(no_query.lastError().isValid());
+
+    no_query.delete_(OP::GE("dfdf", 33333));
+    Q_ASSERT(no_query.lastError().isValid());
+
+    // -----------------------------------------------------
+
+    auto query = Query(TARGET_TABLE);
+
+    query.select().where(OP::EQ("fuubar", "sOmEcRaZy_sTuFf")).perform();
+    Q_ASSERT(query.lastError().isValid());
+
+    query.select({"_id"}).limit(1).perform();
+    Q_ASSERT(!query.lastError().isValid());
+
+    query.delete_(OP::EQ("sdfgsdg", 3333)).perform();
+    Q_ASSERT(query.lastError().isValid());
+
+    bool ok = query.delete_(OP::EQ("_id", -11)).perform();
+    Q_ASSERT(!ok);
+    Q_ASSERT(!query.lastError().isValid());
+
+    query.insert({"olol"}).values({"FUUUU"}).perform();
+    Q_ASSERT(query.lastError().isValid());
+}
+
+void builder_test::test_insert_wrong_usage()
+{
+    auto query = Query(TARGET_TABLE);
+    query
+        .insert({"_otype", "name", "guid"})
+        .values({ 42, "HELLO", "WORLD", "OOPS", "EXTRA", "DATA"})
+        .perform();
+    Q_ASSERT(query.lastError().isValid());
+
+    query
+        .insert({"_otype", "name", "guid"})
+        .values({ 42, "OH_I_FORGOT_TO_ADD_MORE_DATA"})
+        .perform();
+    Q_ASSERT(query.lastError().isValid());
 }
 
 QTEST_MAIN(builder_test)

@@ -1,23 +1,28 @@
 #pragma once
 
 #include <memory>
+#include <QStringList>
 
-#include <QObject>
-#include <QScopedPointer>
-#include <QSqlQuery>
+#include "Where.h"
+
+QT_FORWARD_DECLARE_CLASS(QSqlDatabase)
+QT_FORWARD_DECLARE_CLASS(QSqlQuery)
+QT_FORWARD_DECLARE_CLASS(QSqlError)
 
 QT_FORWARD_DECLARE_CLASS(QueryPrivate)
 QT_FORWARD_DECLARE_CLASS(Selector)
 QT_FORWARD_DECLARE_CLASS(Inserter)
+QT_FORWARD_DECLARE_CLASS(Deleter)
 
 class Query
 {
-    Q_GADGET
-    Q_DECLARE_PRIVATE(Query)
     Q_DISABLE_COPY(Query)
 public:
     explicit Query(const QString& tableName = QString(), const QString& pkey = QString());
     ~Query();
+
+    Query(Query&&) = default;
+    Query& operator=(Query&&) = default;
 
     static void setQueryLoggingEnabled(bool enabled);
 
@@ -25,8 +30,12 @@ public:
 
     Inserter insert(const QStringList& fields) const;
 
+    Deleter  delete_(OP::Clause&& whereClause);
+
 public:
     QSqlQuery performSQL(const QString& sql) const;
+
+    QSqlError lastError() const;
 
     QString tableName() const;
 
@@ -39,5 +48,6 @@ private:
     static bool LOG_QUERIES;
 
 private:
-    QScopedPointer<QueryPrivate> d_ptr;
+    friend class QueryPrivate;
+    std::unique_ptr<QueryPrivate> impl;
 };

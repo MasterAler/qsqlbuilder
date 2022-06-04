@@ -9,7 +9,6 @@ QT_FORWARD_DECLARE_CLASS(InserterPerformer)
 
 class Inserter
 {
-    Q_GADGET
     Q_DISABLE_COPY(Inserter)
 public:
     Inserter(const Query* q, const QStringList& fields);
@@ -29,7 +28,6 @@ protected:
 
 class InserterPerformer: public Inserter
 {
-    Q_GADGET
     Q_DISABLE_COPY(InserterPerformer)
 public:
     InserterPerformer(const Query* q, const QStringList& fields);

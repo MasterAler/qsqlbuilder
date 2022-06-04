@@ -2,9 +2,11 @@
 #include "Config.h"
 #include "Selector.h"
 #include "Inserter.h"
+#include "Deleter.h"
 
 #include <QSqlDatabase>
 #include <QSqlRecord>
+#include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlIndex>
 #include <QUuid>
@@ -41,6 +43,8 @@ public:
 
     QString                 m_pkey;
     QStringList             m_columnNames;
+
+    QSqlError               m_lastError;
 };
 
 bool Query::LOG_QUERIES { false };
@@ -48,14 +52,12 @@ bool Query::LOG_QUERIES { false };
 /**********************************************************************************/
 
 Query::Query(const QString& tableName, const QString& pkey)
-    : d_ptr(new QueryPrivate(tableName, pkey))
+    : impl(new QueryPrivate(tableName, pkey))
 { }
 
 Query::~Query()
 {
-    Q_D(Query);
-    d->m_DB.close();
-
+    impl->m_DB.close();
 }
 
 void Query::setQueryLoggingEnabled(bool enabled)
@@ -65,33 +67,34 @@ void Query::setQueryLoggingEnabled(bool enabled)
 
 QSqlQuery Query::performSQL(const QString& sql) const
 {
-    Q_D(const Query);
-
-    QSqlQuery sqlQuery(d->m_DB);
+    QSqlQuery sqlQuery(impl->m_DB);
     sqlQuery.exec(sql);
 
     if (Query::LOG_QUERIES)
         qDebug() << sqlQuery.lastQuery();
 
+    impl->m_lastError = sqlQuery.lastError();
     return sqlQuery;
+}
+
+QSqlError Query::lastError() const
+{
+    return impl->m_lastError;
 }
 
 QString Query::tableName() const
 {
-    Q_D(const Query);
-    return d->m_tableName;
+    return impl->m_tableName;
 }
 
 QString Query::primaryKeyName() const
 {
-    Q_D(const Query);
-    return d->m_pkey;
+    return impl->m_pkey;
 }
 
 QStringList Query::columnNames() const
 {
-    Q_D(const Query);
-    return d->m_columnNames;
+    return impl->m_columnNames;
 }
 
 Selector Query::select(const QStringList& fields) const
@@ -102,6 +105,11 @@ Selector Query::select(const QStringList& fields) const
 Inserter Query::insert(const QStringList& fields) const
 {
     return Inserter(this, fields);
+}
+
+Deleter Query::delete_(OP::Clause&& whereClause)
+{
+    return Deleter(this, std::forward<OP::Clause>(whereClause));
 }
 
 QSqlDatabase& Query::defaultConnection()
