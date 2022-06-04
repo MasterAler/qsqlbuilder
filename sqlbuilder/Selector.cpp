@@ -44,7 +44,7 @@ struct Selector::SelectorPrivate
         QSet<QString> thisColumnSet  = QSet<QString>::fromList(m_query->columnNames());
         for (const auto& part: m_joinParts)
         {
-            QSet<QString> otherColumnSet = QSet<QString>::fromList(Query::tableColumnNames(part.m_joinTable));
+            QSet<QString> otherColumnSet = QSet<QString>::fromList(m_query->tableColumnNames(part.m_joinTable));
             otherColumnSet.intersect(thisColumnSet);
 
             for(int i = 0; i < m_fields.count(); ++i)
