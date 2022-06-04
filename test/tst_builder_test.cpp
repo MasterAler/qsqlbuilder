@@ -59,7 +59,7 @@ private slots:
     void test_column_getter();
     void test_join();
 
-    void test_nulls();
+    void test_join_complex();
 
 private:
     bool            m_showDebug;
@@ -606,7 +606,7 @@ void builder_test::test_join()
     Q_ASSERT(!other_join_res.isEmpty());
 }
 
-void builder_test::test_nulls()
+void builder_test::test_join_complex()
 {
     const auto query = Query(TARGET_TABLE);
     const auto second_query = Query(SECOND_TABLE);
@@ -627,8 +627,8 @@ void builder_test::test_nulls()
 
     auto lame_join = second_query
             .select({"_id", "_parent", "some_text", "name", "guid", "descr"})
-            .where(OP::EQ("_id", id2.first()))
             .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER, true)
+            .where(OP::EQ("_id", id2.first()))
             .orderBy("_id", Order::ASC)
             .perform();
     Q_ASSERT(!second_query.hasError());
@@ -636,14 +636,36 @@ void builder_test::test_nulls()
 
     auto other_join_res = second_query
             .select({"_id", "_parent", "some_text", "name", "guid", "descr"})
-            .where(OP::EQ("_id", id2.first()))
             .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .where(OP::EQ("_id", id2.first()))
             .orderBy("_id", Order::ASC)
             .perform();
     Q_ASSERT(!second_query.hasError());
     Q_ASSERT(!other_join_res.isEmpty());
     Q_ASSERT(other_join_res.count() == 1);
     Q_ASSERT(other_join_res.first().toMap()["_id"].toInt() == id2.first());
+
+    // strange order test
+    other_join_res = second_query
+            .select({"_id", "_parent", "some_text", "name", "guid", "descr"})
+            .where(OP::EQ("_id", id2.first()))
+            .orderBy("_id", Order::ASC)
+            .join(TARGET_TABLE, {"some_fkey", "_id"}, Join::INNER)
+            .perform();
+    Q_ASSERT(!second_query.hasError());
+    Q_ASSERT(!other_join_res.isEmpty());
+    Q_ASSERT(other_join_res.count() == 1);
+    Q_ASSERT(other_join_res.first().toMap()["_id"].toInt() == id2.first());
+
+    // cascade delete test
+
+    bool ok = query.delete_(OP::EQ("_id", id.first())).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(ok);
+
+    auto tst = second_query.select().where(OP::EQ("_id", id2.first())).perform();
+    Q_ASSERT(!query.hasError());
+    Q_ASSERT(tst.isEmpty());
 }
 
 QTEST_MAIN(builder_test)
